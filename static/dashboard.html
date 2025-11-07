@@ -368,6 +368,141 @@
             animation: pulse 2s infinite;
         }
 
+        /* Expandable verification section */
+        .verification-section {
+            margin-top: 12px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .verification-section.expanded {
+            max-height: 800px;
+        }
+
+        .verification-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(199, 125, 255, 0.1);
+            border: 1px solid rgba(199, 125, 255, 0.3);
+            border-radius: 6px;
+            color: var(--accent-primary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .verification-toggle:hover {
+            background: rgba(199, 125, 255, 0.2);
+            border-color: var(--accent-primary);
+        }
+
+        .verification-toggle svg {
+            transition: transform 0.3s ease;
+        }
+
+        .verification-toggle.expanded svg {
+            transform: rotate(90deg);
+        }
+
+        .verification-content {
+            margin-top: 12px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(199, 125, 255, 0.2);
+            border-radius: 8px;
+        }
+
+        .verification-field {
+            margin-bottom: 15px;
+        }
+
+        .verification-field:last-child {
+            margin-bottom: 0;
+        }
+
+        .verification-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .verification-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(199, 125, 255, 0.05);
+            border: 1px solid rgba(199, 125, 255, 0.2);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            flex-shrink: 0;
+            padding: 4px 8px;
+            background: rgba(199, 125, 255, 0.2);
+            border: 1px solid rgba(199, 125, 255, 0.3);
+            border-radius: 4px;
+            color: var(--accent-primary);
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(199, 125, 255, 0.3);
+            border-color: var(--accent-primary);
+        }
+
+        .copy-btn.copied {
+            background: rgba(0, 255, 0, 0.2);
+            border-color: rgba(0, 255, 0, 0.5);
+            color: #00FF00;
+        }
+
+        .public-inputs-decoded {
+            margin-top: 8px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .public-inputs-decoded div {
+            margin-bottom: 4px;
+        }
+
+        .verify-independently-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, rgba(199, 125, 255, 0.7) 100%);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 12px;
+        }
+
+        .verify-independently-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(199, 125, 255, 0.4);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero { padding: 100px 20px 40px; }
@@ -637,19 +772,72 @@ def detect_fraud(http_status, body_length):
             // Recent claims
             const claimsDiv = document.getElementById('recentClaims');
             if (data.recent_claims && data.recent_claims.length > 0) {
-                claimsDiv.innerHTML = data.recent_claims.map(claim => `
+                claimsDiv.innerHTML = data.recent_claims.map((claim, index) => {
+                    const claimId = claim.id || claim.claim_id;
+                    const shortClaimId = claimId.substring(0, 8);
+
+                    // Decode public inputs
+                    const publicInputs = claim.public_inputs || [];
+                    const decoded = decodePublicInputs(publicInputs);
+
+                    return `
                     <div class="list-item">
-                        <div class="list-item-title">Claim ${claim.claim_id.substring(0, 8)}...</div>
+                        <div class="list-item-title">Claim ${shortClaimId}...</div>
                         <div class="list-item-meta">
                             <span>💵 $${claim.payout_amount.toLocaleString()}</span>
                             <span>📊 HTTP ${claim.http_status}</span>
                             <span class="status-badge ${claim.status}">${claim.status.toUpperCase()}</span>
                         </div>
-                        <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary);">
-                            ✅ ZK Proof verified | 🔗 <a href="/proofs/${claim.claim_id}" target="_blank" style="color: var(--accent-secondary);">View Proof</a>
+                        <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 10px;">
+                            <span>✅ ZK Proof verified</span>
+                            <button class="verification-toggle" onclick="toggleVerification('${claimId}', event)">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                                Show Verification Data
+                            </button>
+                        </div>
+                        <div id="verification-${claimId}" class="verification-section">
+                            <div class="verification-content">
+                                <div class="verification-field">
+                                    <div class="verification-label">🔐 Proof Hash</div>
+                                    <div class="verification-value">
+                                        <span style="flex: 1;">${claim.proof || 'N/A'}</span>
+                                        <button class="copy-btn" onclick="copyToClipboard('${claim.proof}', this)">Copy</button>
+                                    </div>
+                                </div>
+
+                                <div class="verification-field">
+                                    <div class="verification-label">📊 Public Inputs (Raw)</div>
+                                    <div class="verification-value">
+                                        <span style="flex: 1;">${JSON.stringify(publicInputs)}</span>
+                                        <button class="copy-btn" onclick="copyToClipboard('${JSON.stringify(publicInputs).replace(/'/g, "\\'")}', this)">Copy</button>
+                                    </div>
+                                    <div class="public-inputs-decoded">
+                                        <div><strong>Decoded:</strong></div>
+                                        <div>• Fraud Detected: <strong>${decoded.fraudDetected ? 'Yes' : 'No'}</strong></div>
+                                        <div>• HTTP Status: <strong>${decoded.httpStatus}</strong></div>
+                                        <div>• Body Length: <strong>${decoded.bodyLength} bytes</strong></div>
+                                        <div>• Payout Amount: <strong>$${decoded.payoutAmount.toLocaleString()}</strong></div>
+                                    </div>
+                                </div>
+
+                                <div class="verification-field">
+                                    <div class="verification-label">🔗 Verify via curl</div>
+                                    <div class="verification-value">
+                                        <span style="flex: 1; font-size: 10px;">curl -X POST https://x402insurance.com/verify -H "Content-Type: application/json" -d '{"proof":"${claim.proof}","public_inputs":${JSON.stringify(publicInputs)}}'</span>
+                                        <button class="copy-btn" onclick="copyToClipboard(\`curl -X POST https://x402insurance.com/verify -H &quot;Content-Type: application/json&quot; -d '{&quot;proof&quot;:&quot;${claim.proof}&quot;,&quot;public_inputs&quot;:${JSON.stringify(publicInputs)}}'\`, this)">Copy</button>
+                                    </div>
+                                </div>
+
+                                <button class="verify-independently-btn" onclick="fillVerificationForm('${claim.proof}', ${JSON.stringify(publicInputs).replace(/'/g, "\\'")}); scrollToVerifier();">
+                                    ✓ Verify Independently Below
+                                </button>
+                            </div>
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             }
         }
 
@@ -703,6 +891,97 @@ def detect_fraud(http_status, body_length):
         // Refresh dashboard
         function refreshDashboard() {
             fetchDashboardData();
+        }
+
+        // Decode public inputs
+        function decodePublicInputs(publicInputs) {
+            // Expected format: [fraud_detected, http_status, body_length, payout_amount]
+            if (!publicInputs || publicInputs.length < 4) {
+                return {
+                    fraudDetected: false,
+                    httpStatus: 0,
+                    bodyLength: 0,
+                    payoutAmount: 0
+                };
+            }
+
+            return {
+                fraudDetected: publicInputs[0] === 1,
+                httpStatus: publicInputs[1],
+                bodyLength: publicInputs[2],
+                payoutAmount: publicInputs[3] / 100 // Convert from cents to dollars
+            };
+        }
+
+        // Toggle verification section
+        function toggleVerification(claimId, event) {
+            const section = document.getElementById(`verification-${claimId}`);
+            const button = event.currentTarget;
+            const svg = button.querySelector('svg');
+
+            if (section.classList.contains('expanded')) {
+                section.classList.remove('expanded');
+                button.classList.remove('expanded');
+                button.innerHTML = `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                    Show Verification Data
+                `;
+            } else {
+                section.classList.add('expanded');
+                button.classList.add('expanded');
+                button.innerHTML = `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                    Hide Verification Data
+                `;
+            }
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+
+        // Fill verification form
+        function fillVerificationForm(proofHash, publicInputs) {
+            document.getElementById('proofInput').value = proofHash;
+            document.getElementById('publicInputsInput').value = JSON.stringify(publicInputs);
+        }
+
+        // Scroll to verifier
+        function scrollToVerifier() {
+            const verifier = document.querySelector('.proof-verifier');
+            if (verifier) {
+                verifier.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Flash animation
+                verifier.style.transition = 'all 0.3s ease';
+                verifier.style.transform = 'scale(1.02)';
+                verifier.style.borderColor = 'var(--accent-primary)';
+
+                setTimeout(() => {
+                    verifier.style.transform = 'scale(1)';
+                    verifier.style.borderColor = 'rgba(199, 125, 255, 0.2)';
+                }, 300);
+            }
         }
 
         // Initialize
