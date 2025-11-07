@@ -4,4 +4,3 @@ python-dotenv==1.0.0
 httpx==0.25.1
 gunicorn==21.2.0
 pyyaml==6.0.1
-git+https://github.com/coinbase/x402.git@main#subdirectory=sdks/python
