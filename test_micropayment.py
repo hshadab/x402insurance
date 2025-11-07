@@ -3,16 +3,17 @@
 Test x402 Insurance with REAL Micropayments
 
 Scenario:
-- Agent pays 0.001 USDC for insurance (10% of API cost)
+- Agent pays 0.0001 USDC for insurance (1% of coverage)
 - Agent pays 0.01 USDC to merchant API (typical x402 call)
 - Merchant fails with 503 error
 - Agent files claim
 - Insurance pays 0.01 USDC refund
 
 This demonstrates the economics:
-- Insurance: $0.001 (1/10th of a cent)
+- Insurance Premium: $0.0001 (1/100th of a cent)
 - API Call: $0.01 (1 cent)
-- Protection ratio: 10x coverage for 10% premium
+- Coverage: $0.01 (1 cent)
+- Protection ratio: 100x coverage for 1% premium
 """
 import httpx
 import json
@@ -25,9 +26,10 @@ print("x402 INSURANCE - MICROPAYMENT TEST")
 print("=" * 70)
 print()
 print("ECONOMICS:")
-print("  Insurance Premium: 0.001 USDC ($0.001 - 1/10th of a cent)")
-print("  Typical x402 API Call: 0.01 USDC ($0.01 - 1 cent)")
-print("  Coverage: 10x the premium (up to 1 USDC max)")
+print("  Insurance Premium: 0.0001 USDC ($0.0001 - 1% of coverage)")
+print("  Coverage Amount: 0.01 USDC ($0.01 - 1 cent)")
+print("  Typical x402 API Call: 0.01 USDC")
+print("  Protection Ratio: 100x (1% premium for 100% coverage)")
 print()
 print("=" * 70)
 print()
@@ -37,7 +39,7 @@ SERVER_URL = "http://localhost:8000"
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
-# Step 1: Create test policy (0.001 USDC premium, 0.01 USDC coverage)
+# Step 1: Create test policy (0.0001 USDC premium, 0.01 USDC coverage - 1% model)
 print("Step 1: Creating Insurance Policy")
 print("-" * 70)
 
@@ -52,7 +54,7 @@ test_policy = {
     "merchant_url": test_merchant,
     "merchant_url_hash": "micro123",
     "coverage_amount": 0.01,  # $0.01 API call protection
-    "premium": 0.001,  # $0.001 insurance cost
+    "premium": 0.0001,  # $0.0001 insurance cost (1% of coverage)
     "status": "active",
     "created_at": datetime.now().isoformat(),
     "expires_at": (datetime.now() + timedelta(hours=24)).isoformat()
@@ -73,7 +75,7 @@ with open(policies_file, 'w') as f:
 
 print(f"✅ Policy Created: {policy_id}")
 print(f"   Agent: {test_agent_address}")
-print(f"   Premium Paid: 0.001 USDC ($0.001)")
+print(f"   Premium Paid: 0.0001 USDC ($0.0001 - 1% of coverage)")
 print(f"   Coverage Amount: 0.01 USDC ($0.01)")
 print(f"   API Endpoint: {test_merchant}")
 print()
@@ -156,24 +158,24 @@ try:
         print()
 
         print("SUMMARY:")
-        print(f"  Agent paid:     0.001 USDC for insurance")
+        print(f"  Agent paid:     0.0001 USDC for insurance (1% premium)")
         print(f"  Agent lost:     0.01 USDC to failed API")
         print(f"  Agent refunded: {claim['payout_amount']} USDC from insurance")
-        print(f"  Net cost:       0.001 USDC (just the premium!)")
+        print(f"  Net cost:       0.0001 USDC (just the premium!)")
         print()
 
         print("KEY INSIGHTS:")
-        print("  ✅ Micropayments work: $0.001 premium protects $0.01 API call")
-        print("  ✅ Economics make sense: 10% premium for 10x coverage")
+        print("  ✅ Micropayments work: $0.0001 premium (1%) protects $0.01 API call")
+        print("  ✅ Economics make sense: 1% premium for 100x protection")
         print("  ✅ zkp proves fraud without exposing merchant identity")
         print("  ✅ Instant refund (30 seconds vs 30 days traditional)")
         print("  ✅ Perfect for x402 use case: protect every API call!")
         print()
 
         print("WITH YOUR 1 USDC:")
-        print("  - Can buy 1,000 insurance policies (0.001 each)")
-        print("  - Can protect 1,000 API calls")
-        print("  - Or cover 100 failures (0.01 USDC refunds)")
+        print("  - Can buy 10,000 insurance policies (0.0001 each)")
+        print("  - Can protect up to $100 worth of API calls (with 0.1 max coverage)")
+        print("  - Or cover 100 failures at 0.01 USDC each = 1 USDC total refunds")
         print()
 
     else:

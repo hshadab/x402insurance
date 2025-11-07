@@ -46,32 +46,17 @@ blockchain = BlockchainClient(
 )
 
 # Configuration
-DEFAULT_PREMIUM = float(os.getenv("DEFAULT_PREMIUM_USDC", "1000"))
-MAX_COVERAGE = float(os.getenv("MAX_COVERAGE_USDC", "1000000"))
+PREMIUM_PERCENTAGE = float(os.getenv("PREMIUM_PERCENTAGE", "0.01"))  # 1% of coverage
+MAX_COVERAGE = float(os.getenv("MAX_COVERAGE_USDC", "0.1"))
 POLICY_DURATION = int(os.getenv("POLICY_DURATION_HOURS", "24"))
 USDC_ADDRESS = os.getenv("USDC_CONTRACT_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e")
 
 # Initialize x402 payment middleware
 if BACKEND_ADDRESS:
     payment_middleware = PaymentMiddleware(app)
-
-    # Add payment requirement to /insure endpoint
-    # Premium is DEFAULT_PREMIUM USDC (converted to smallest units with 6 decimals)
-    payment_middleware.add(
-        path="/insure",
-        price=TokenAmount(
-            amount=str(int(DEFAULT_PREMIUM * 1_000_000)),  # Convert to 6 decimal USDC integer
-            asset=TokenAsset(
-                address=USDC_ADDRESS,
-                decimals=6,
-                eip712=EIP712Domain(name="USDC", version="2"),
-            ),
-        ),
-        pay_to_address=BACKEND_ADDRESS,
-        network="base",  # Base Mainnet
-    )
-    print(f"✅ x402 middleware enabled for /insure endpoint")
-    print(f"   Premium: {DEFAULT_PREMIUM} USDC")
+    print(f"✅ x402 middleware initialized")
+    print(f"   Premium: {PREMIUM_PERCENTAGE * 100}% of coverage amount")
+    print(f"   Max coverage: {MAX_COVERAGE} USDC")
     print(f"   Payment recipient: {BACKEND_ADDRESS}")
 else:
     print("⚠️  x402 middleware DISABLED - no payment verification")
@@ -232,18 +217,40 @@ def pricing_info():
     """Pricing information for agent discovery"""
     return jsonify({
         "premium": {
-            "amount": DEFAULT_PREMIUM,
-            "units": int(DEFAULT_PREMIUM * 1_000_000),
+            "model": "percentage-based",
+            "percentage": PREMIUM_PERCENTAGE,
+            "percentage_display": f"{PREMIUM_PERCENTAGE * 100}%",
+            "calculation": "Premium = Coverage Amount × 1%",
             "currency": "USDC",
-            "display": f"${DEFAULT_PREMIUM} (1/10th of a cent)",
-            "network": "base"
+            "network": "base",
+            "examples": {
+                "0.01_usdc_coverage": {
+                    "coverage": 0.01,
+                    "premium": 0.0001,
+                    "premium_display": "$0.0001",
+                    "units": 100
+                },
+                "0.05_usdc_coverage": {
+                    "coverage": 0.05,
+                    "premium": 0.0005,
+                    "premium_display": "$0.0005",
+                    "units": 500
+                },
+                "0.1_usdc_coverage": {
+                    "coverage": 0.1,
+                    "premium": 0.001,
+                    "premium_display": "$0.001",
+                    "units": 1000
+                }
+            }
         },
         "coverage": {
-            "min": 0.01,
+            "min": 0.001,
             "max": MAX_COVERAGE,
             "currency": "USDC",
             "recommended": 0.01,
-            "display": f"${0.01} - ${MAX_COVERAGE}"
+            "display": f"$0.001 - ${MAX_COVERAGE}",
+            "note": "Maximum coverage per claim is 0.1 USDC for micropayment protection"
         },
         "policy_duration": {
             "hours": POLICY_DURATION,
@@ -262,12 +269,21 @@ def pricing_info():
             "payTo": BACKEND_ADDRESS
         },
         "economics": {
-            "protection_ratio": "Up to 1000x",
-            "example": {
-                "premium_paid": "$0.001",
+            "protection_ratio": "Up to 100x",
+            "explanation": "Pay 1% premium to protect 100% of coverage",
+            "example_scenario": {
                 "api_call_cost": "$0.01",
-                "coverage": "$0.01",
-                "net_cost_if_fraud": "$0.001 (just the premium)"
+                "insurance_coverage": "$0.01",
+                "premium_paid": "$0.0001 (1% of coverage)",
+                "if_merchant_fails": {
+                    "refund_received": "$0.01",
+                    "total_cost": "$0.0001 (just the premium)",
+                    "savings": "$0.01 - $0.0001 = $0.0099"
+                },
+                "if_merchant_succeeds": {
+                    "total_cost": "$0.01 (API) + $0.0001 (premium) = $0.0101",
+                    "cost_vs_uninsured": "+$0.0001 (1% overhead)"
+                }
             }
         }
     })
@@ -334,11 +350,12 @@ def agent_card():
                 "payment": {
                     "scheme": "exact",
                     "network": "base",
-                    "maxAmountRequired": str(int(DEFAULT_PREMIUM * 1_000_000)),
+                    "maxAmountRequired": str(int(MAX_COVERAGE * PREMIUM_PERCENTAGE * 1_000_000)),
                     "asset": USDC_ADDRESS,
                     "payTo": BACKEND_ADDRESS,
-                    "description": "Insurance premium",
-                    "maxTimeoutSeconds": 60
+                    "description": f"Insurance premium (1% of coverage, max {MAX_COVERAGE * PREMIUM_PERCENTAGE} USDC for max coverage)",
+                    "maxTimeoutSeconds": 60,
+                    "note": "Actual amount varies based on requested coverage_amount (premium = coverage × 1%)"
                 },
                 "inputSchema": {
                     "type": "object",
@@ -351,9 +368,9 @@ def agent_card():
                         },
                         "coverage_amount": {
                             "type": "number",
-                            "minimum": 0.01,
+                            "minimum": 0.001,
                             "maximum": MAX_COVERAGE,
-                            "description": "Coverage amount in USDC"
+                            "description": f"Coverage amount in USDC (max {MAX_COVERAGE}). Premium will be calculated as 1% of this amount."
                         }
                     }
                 },
@@ -369,9 +386,16 @@ def agent_card():
                     }
                 },
                 "pricing": {
-                    "amount": DEFAULT_PREMIUM,
+                    "model": "percentage-based",
+                    "percentage": PREMIUM_PERCENTAGE,
+                    "percentage_display": f"{PREMIUM_PERCENTAGE * 100}%",
+                    "calculation": "Premium = Coverage Amount × 1%",
                     "currency": "USDC",
-                    "display": f"${DEFAULT_PREMIUM}"
+                    "examples": {
+                        "min": {"coverage": 0.001, "premium": 0.00001},
+                        "typical": {"coverage": 0.01, "premium": 0.0001},
+                        "max": {"coverage": MAX_COVERAGE, "premium": MAX_COVERAGE * PREMIUM_PERCENTAGE}
+                    }
                 }
             },
             {
@@ -497,22 +521,7 @@ def insure():
         "expires_at": "2025-11-07T10:00:00"
       }
     """
-    # x402 middleware handles payment verification automatically
-    # If we reach here, payment is valid
-
-    # Get payer address from x402 verification response
-    # The middleware stores this in Flask's g object
-    verify_response = getattr(g, 'verify_response', None)
-
-    if not verify_response or not verify_response.payer:
-        return jsonify({
-            "error": "Payment verification failed - no payer address found",
-            "debug": "x402 middleware may not be configured correctly"
-        }), 500
-
-    agent_address = verify_response.payer
-
-    # Get request data
+    # Get request data first to calculate premium
     data = request.json
     merchant_url = data.get('merchant_url')
     coverage_amount = data.get('coverage_amount')
@@ -527,10 +536,37 @@ def insure():
     if coverage_amount > MAX_COVERAGE:
         return jsonify({"error": f"Coverage exceeds maximum of {MAX_COVERAGE} USDC"}), 400
 
-    # For testing: Ensure coverage is reasonable for the premium
-    # (Premium is DEFAULT_PREMIUM, coverage should be proportional)
-    if coverage_amount > DEFAULT_PREMIUM * 100:  # Max 100x leverage
-        return jsonify({"error": f"Coverage too high for premium. Max: {DEFAULT_PREMIUM * 100} USDC"}), 400
+    # Calculate premium dynamically (1% of coverage)
+    premium = coverage_amount * PREMIUM_PERCENTAGE
+    premium_units = int(premium * 1_000_000)  # Convert to smallest units
+
+    # Add dynamic x402 payment requirement for this specific request
+    if BACKEND_ADDRESS:
+        payment_middleware.add(
+            path="/insure",
+            price=TokenAmount(
+                amount=str(premium_units),
+                asset=TokenAsset(
+                    address=USDC_ADDRESS,
+                    decimals=6,
+                    eip712=EIP712Domain(name="USDC", version="2"),
+                ),
+            ),
+            pay_to_address=BACKEND_ADDRESS,
+            network="base",
+        )
+
+    # x402 middleware handles payment verification
+    # Get payer address from x402 verification response
+    verify_response = getattr(g, 'verify_response', None)
+
+    if not verify_response or not verify_response.payer:
+        return jsonify({
+            "error": "Payment verification failed - no payer address found",
+            "debug": "x402 middleware may not be configured correctly"
+        }), 500
+
+    agent_address = verify_response.payer
 
     # Create policy
     policy_id = str(uuid.uuid4())
@@ -542,7 +578,7 @@ def insure():
         "merchant_url": merchant_url,
         "merchant_url_hash": merchant_url_hash,
         "coverage_amount": coverage_amount,
-        "premium": DEFAULT_PREMIUM,
+        "premium": premium,
         "status": "active",
         "created_at": datetime.utcnow().isoformat(),
         "expires_at": (datetime.utcnow() + timedelta(hours=POLICY_DURATION)).isoformat()
@@ -557,7 +593,7 @@ def insure():
         "policy_id": policy_id,
         "agent_address": policy["agent_address"],
         "coverage_amount": coverage_amount,
-        "premium": DEFAULT_PREMIUM,
+        "premium": premium,
         "status": "active",
         "expires_at": policy["expires_at"]
     }), 201

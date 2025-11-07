@@ -27,10 +27,10 @@ AI agents pay for x402 APIs but have **zero recourse** when merchants fail:
 
 **Micropayment Insurance for x402 Agents:**
 
-Pay a tiny premium ($0.001 USDC) → Get coverage (up to $1.00 USDC) → If merchant fails, instant refund
+Pay a 1% premium → Get coverage (up to $0.1 USDC per claim) → If merchant fails, instant refund
 
-✅ **Micropayment Premiums** - Just $0.001 USDC (1/10th of a cent) per policy
-✅ **Up to 1000x Coverage** - Protect $0.01 - $1.00 API calls with minimal premium
+✅ **1% Percentage Premium** - Pay only 1% of your coverage amount
+✅ **Up to 100x Protection** - Get 100% coverage for just 1% cost
 ✅ **Instant USDC Refunds** - Get your money back in 15-30 seconds
 ✅ **Zero-Knowledge Proofs** - Fraud verification using zkEngine (Nova/Arecibo SNARKs)
 ✅ **Agent Discoverable** - Full A2A and x402 Bazaar compatibility
@@ -43,11 +43,13 @@ Pay a tiny premium ($0.001 USDC) → Get coverage (up to $1.00 USDC) → If merc
 ### The Insurance Flow
 
 ```
-1. Agent pays 1 USDC premium TO US (the insurer)
-   → Policy created with 100 USDC coverage for 24 hours
+1. Agent chooses coverage amount (e.g., 0.01 USDC) for their API call
+   → Pays 1% premium TO US (e.g., 0.0001 USDC)
+   → Policy created for 24 hours
                     ↓
 2. Agent pays X USDC TO MERCHANT (via x402)
    → Merchant receives payment (they keep it regardless)
+   → Example: Agent pays 0.01 USDC for API call
                     ↓
 3. Merchant fails: Returns 503 error / empty response / goes offline
                     ↓
@@ -58,10 +60,21 @@ Pay a tiny premium ($0.001 USDC) → Get coverage (up to $1.00 USDC) → If merc
                     ↓
 6. Proof verified → We pay agent X USDC FROM OUR RESERVES
    → Merchant keeps their payment, we absorb the loss
+   → Example: Agent receives 0.01 USDC refund (100% of coverage)
                     ↓
 7. Public proof published on-chain
    → Anyone can verify we paid a legitimate claim
 ```
+
+**Pricing Model:**
+- **Percentage Premium**: 1% of coverage amount
+- **Max Coverage**: 0.1 USDC per claim (ideal for micropayment protection)
+- **Duration**: 24 hours
+
+**Examples:**
+- **0.01 USDC coverage** → 0.0001 USDC premium (1%) = 100x protection
+- **0.05 USDC coverage** → 0.0005 USDC premium (1%) = 100x protection
+- **0.1 USDC coverage** → 0.001 USDC premium (1%) = 100x protection
 
 **Important:** This is insurance (we pay from reserves), not chargebacks (reversing merchant payment). From the agent's perspective, the outcome is the same: money back when merchant fails.
 
@@ -418,14 +431,16 @@ Kyle Den Hartog (Brave Security) identified a critical gap:
 - Twitter reports: "x402 protocol API experiencing frequent lags"
 
 **Without insurance:**
-- Agent loses 100 USDC → funds gone forever
+- Agent loses 0.01-0.1 USDC per failed API call → funds gone forever
 - No recourse, no dispute, no refund
+- Add up over many calls = significant losses
 
 **With our insurance:**
-- Agent pays 1 USDC premium for protection
+- Agent pays 1% premium for protection (e.g., 0.0001 USDC to protect 0.01 USDC)
 - If merchant fails: Agent files claim → zkEngine proof → automatic refund in 30 seconds
 - Cryptographic proof of fraud → no disputes, no manual review
 - Public auditability → anyone can verify we're legitimate
+- Only 1% overhead for complete protection
 
 ### Differentiation
 
