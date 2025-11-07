@@ -634,7 +634,7 @@
         </div>
 
         <!-- Blockchain Stats -->
-        <div class="card">
+        <div class="card" id="blockchainCard" style="display: none;">
             <div class="card-title">⛓️ Blockchain Status</div>
             <div class="stats-grid">
                 <div class="stat-box">
@@ -658,30 +658,6 @@
 Wallet: <span id="walletAddress">Loading...</span>
 Network: Base Mainnet
 USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-            </div>
-        </div>
-
-        <!-- Proof Verification -->
-        <div class="card">
-            <div class="card-title">🔐 Public Proof Verification</div>
-            <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                Verify zero-knowledge proofs from fraud claims. Anyone can verify that claims were proven correctly without revealing private data.
-            </p>
-            <div class="proof-verifier">
-                <input
-                    type="text"
-                    class="proof-input"
-                    id="proofInput"
-                    placeholder="Enter proof hex (0x...)"
-                />
-                <textarea
-                    class="proof-input"
-                    id="publicInputsInput"
-                    rows="2"
-                    placeholder='Enter public inputs as JSON array, e.g., [1, 503, 0, 10000]'
-                ></textarea>
-                <button class="verify-btn" onclick="verifyProof()">Verify Proof</button>
-                <div class="proof-result" id="proofResult"></div>
             </div>
         </div>
 
@@ -746,12 +722,15 @@ def detect_fraud(http_status, body_length):
             document.getElementById('totalPolicies').textContent = data.stats.total_policies;
             document.getElementById('claimsPaid').textContent = '$' + data.stats.claims_paid.toLocaleString();
 
-            // Blockchain stats
+            // Blockchain stats - only show if data is available
             if (data.blockchain) {
                 document.getElementById('blockNumber').textContent = data.blockchain.block_number.toLocaleString();
                 document.getElementById('ethBalance').textContent = data.blockchain.eth_balance;
                 document.getElementById('usdcBalance').textContent = data.blockchain.usdc_balance;
                 document.getElementById('walletAddress').textContent = data.blockchain.wallet_address;
+                document.getElementById('blockchainCard').style.display = 'block';
+            } else {
+                document.getElementById('blockchainCard').style.display = 'none';
             }
 
             // Recent policies
@@ -829,62 +808,11 @@ def detect_fraud(http_status, body_length):
                                         <button class="copy-btn" onclick="copyToClipboard(\`curl -X POST https://x402insurance.com/verify -H &quot;Content-Type: application/json&quot; -d '{&quot;proof&quot;:&quot;${claim.proof}&quot;,&quot;public_inputs&quot;:${JSON.stringify(publicInputs)}}'\`, this)">Copy</button>
                                     </div>
                                 </div>
-
-                                <button class="verify-independently-btn" onclick="fillVerificationForm('${claim.proof}', ${JSON.stringify(publicInputs).replace(/'/g, "\\'")}); scrollToVerifier();">
-                                    ✓ Verify Independently Below
-                                </button>
                             </div>
                         </div>
                     </div>
                 `;
                 }).join('');
-            }
-        }
-
-        // Verify proof
-        async function verifyProof() {
-            const proofInput = document.getElementById('proofInput').value.trim();
-            const publicInputsInput = document.getElementById('publicInputsInput').value.trim();
-            const resultDiv = document.getElementById('proofResult');
-
-            if (!proofInput || !publicInputsInput) {
-                resultDiv.className = 'proof-result error';
-                resultDiv.style.display = 'block';
-                resultDiv.textContent = '❌ Please provide both proof and public inputs';
-                return;
-            }
-
-            try {
-                const publicInputs = JSON.parse(publicInputsInput);
-
-                const response = await fetch('/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        proof: proofInput,
-                        public_inputs: publicInputs
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.valid) {
-                    resultDiv.className = 'proof-result success';
-                    resultDiv.style.display = 'block';
-                    resultDiv.innerHTML = `
-                        ✅ <strong>Proof Verified!</strong><br/>
-                        Fraud Detected: ${data.fraud_detected ? 'Yes' : 'No'}<br/>
-                        Payout Amount: $${data.payout_amount.toLocaleString()}
-                    `;
-                } else {
-                    resultDiv.className = 'proof-result error';
-                    resultDiv.style.display = 'block';
-                    resultDiv.textContent = '❌ Proof verification failed: ' + (data.error || 'Invalid proof');
-                }
-            } catch (error) {
-                resultDiv.className = 'proof-result error';
-                resultDiv.style.display = 'block';
-                resultDiv.textContent = '❌ Error: ' + error.message;
             }
         }
 
@@ -958,30 +886,6 @@ def detect_fraud(http_status, body_length):
                     button.textContent = 'Copy';
                 }, 2000);
             });
-        }
-
-        // Fill verification form
-        function fillVerificationForm(proofHash, publicInputs) {
-            document.getElementById('proofInput').value = proofHash;
-            document.getElementById('publicInputsInput').value = JSON.stringify(publicInputs);
-        }
-
-        // Scroll to verifier
-        function scrollToVerifier() {
-            const verifier = document.querySelector('.proof-verifier');
-            if (verifier) {
-                verifier.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                // Flash animation
-                verifier.style.transition = 'all 0.3s ease';
-                verifier.style.transform = 'scale(1.02)';
-                verifier.style.borderColor = 'var(--accent-primary)';
-
-                setTimeout(() => {
-                    verifier.style.transform = 'scale(1)';
-                    verifier.style.borderColor = 'rgba(0, 212, 255, 0.2)';
-                }, 300);
-            }
         }
 
         // Initialize
