@@ -191,6 +191,89 @@ def dashboard_data():
             else:
                 claims = claims_data
 
+    # Add sample data if no real data exists
+    sample_policies = [
+        {
+            "policy_id": "sample-001",
+            "agent_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+            "merchant_url": "https://api.weather.com/forecast",
+            "coverage_amount": 5000,
+            "premium": 50,
+            "status": "active",
+            "created_at": "2025-11-07T10:15:30Z",
+            "expires_at": "2025-11-08T10:15:30Z",
+            "is_sample": True
+        },
+        {
+            "policy_id": "sample-002",
+            "agent_address": "0x1234567890123456789012345678901234567890",
+            "merchant_url": "https://api.coinbase.com/v2/prices",
+            "coverage_amount": 10000,
+            "premium": 100,
+            "status": "active",
+            "created_at": "2025-11-07T14:22:15Z",
+            "expires_at": "2025-11-08T14:22:15Z",
+            "is_sample": True
+        },
+        {
+            "policy_id": "sample-003",
+            "agent_address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+            "merchant_url": "https://api.openai.com/v1/completions",
+            "coverage_amount": 2500,
+            "premium": 25,
+            "status": "claimed",
+            "created_at": "2025-11-07T08:45:00Z",
+            "expires_at": "2025-11-08T08:45:00Z",
+            "is_sample": True
+        }
+    ]
+
+    sample_claims = [
+        {
+            "claim_id": "sample-claim-001",
+            "policy_id": "sample-003",
+            "agent_address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+            "merchant_url": "https://api.openai.com/v1/completions",
+            "http_status": 503,
+            "payout_amount": 2500,
+            "status": "paid",
+            "refund_tx_hash": "0xabc123def456789abc123def456789abc123def456789abc123def456789abc12",
+            "proof": "0x1a2b3c4d...",
+            "created_at": "2025-11-07T09:30:45Z",
+            "is_sample": True
+        },
+        {
+            "claim_id": "sample-claim-002",
+            "policy_id": "sample-004",
+            "agent_address": "0x9876543210987654321098765432109876543210",
+            "merchant_url": "https://api.stripe.com/v1/charges",
+            "http_status": 500,
+            "payout_amount": 7500,
+            "status": "paid",
+            "refund_tx_hash": "0xdef789abc123def789abc123def789abc123def789abc123def789abc123def78",
+            "proof": "0x5e6f7g8h...",
+            "created_at": "2025-11-06T18:12:20Z",
+            "is_sample": True
+        },
+        {
+            "claim_id": "sample-claim-003",
+            "policy_id": "sample-005",
+            "agent_address": "0x5555666677778888999900001111222233334444",
+            "merchant_url": "https://api.github.com/repos",
+            "http_status": 502,
+            "payout_amount": 1000,
+            "status": "paid",
+            "refund_tx_hash": "0x9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m",
+            "proof": "0x9i0j1k2l...",
+            "created_at": "2025-11-06T12:05:10Z",
+            "is_sample": True
+        }
+    ]
+
+    # Prepend sample data (so real data appears first if it exists)
+    policies = sample_policies + policies
+    claims = sample_claims + claims
+
     # Calculate stats
     total_coverage = sum(p.get('coverage_amount', 0) for p in policies if isinstance(p, dict) and p.get('status') == 'active')
     total_policies = len(policies)

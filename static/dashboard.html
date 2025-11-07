@@ -196,6 +196,21 @@
         .status-badge.pending { background: rgba(255,184,0,0.2); color: #FFB800; }
         .status-badge.paid { background: rgba(0,212,255,0.2); color: #00D4FF; }
 
+        /* Sample data badge */
+        .sample-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            margin-left: 8px;
+            background: rgba(255, 184, 0, 0.15);
+            border: 1px solid rgba(255, 184, 0, 0.4);
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--accent-warning);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         /* List item */
         .list-item {
             padding: 15px;
@@ -738,7 +753,10 @@ def detect_fraud(http_status, body_length):
             if (data.recent_policies && data.recent_policies.length > 0) {
                 policiesDiv.innerHTML = data.recent_policies.map(policy => `
                     <div class="list-item">
-                        <div class="list-item-title">Policy ${policy.policy_id.substring(0, 8)}...</div>
+                        <div class="list-item-title">
+                            Policy ${policy.policy_id.substring(0, 8)}...
+                            ${policy.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
+                        </div>
                         <div class="list-item-meta">
                             <span>💰 $${policy.coverage_amount.toLocaleString()}</span>
                             <span>🔗 ${policy.agent_address.substring(0, 10)}...</span>
@@ -761,7 +779,10 @@ def detect_fraud(http_status, body_length):
 
                     return `
                     <div class="list-item">
-                        <div class="list-item-title">Claim ${shortClaimId}...</div>
+                        <div class="list-item-title">
+                            Claim ${shortClaimId}...
+                            ${claim.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
+                        </div>
                         <div class="list-item-meta">
                             <span>💵 $${claim.payout_amount.toLocaleString()}</span>
                             <span>📊 HTTP ${claim.http_status}</span>
