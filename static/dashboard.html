@@ -141,7 +141,7 @@
         /* Grid layout */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -804,6 +804,7 @@ def detect_fraud(http_status, body_length):
                 document.getElementById('blockNumber').textContent = data.blockchain.block_number.toLocaleString();
                 document.getElementById('ethBalance').textContent = data.blockchain.eth_balance;
                 document.getElementById('usdcBalance').textContent = data.blockchain.usdc_balance;
+                document.getElementById('usdcReserve').textContent = data.blockchain.usdc_balance + ' USDC';
                 document.getElementById('walletAddress').textContent = data.blockchain.wallet_address;
                 document.getElementById('blockchainCard').style.display = 'block';
             } else {
