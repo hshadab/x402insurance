@@ -647,7 +647,35 @@
                     </table>
 
                     <div class="info-box warning">
-                        <strong><svg style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Proof Generation Time:</strong> zkEngine takes 10-20 seconds to generate proofs. Total claim processing time is 15-30 seconds including blockchain confirmation.
+                        <strong><svg style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Proof Generation Time:</strong> zkEngine takes 10-20 seconds to generate proofs. Use <code>?async=true</code> to avoid waiting (NEW!).
+                    </div>
+
+                    <div class="endpoint-section-title">Query Parameters (Optional):</div>
+                    <table>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><code>async=true</code></td>
+                            <td>🆕 Returns immediately (202) with status "processing". Poll GET /claims/{claim_id} for result.</td>
+                        </tr>
+                    </table>
+
+                    <div class="endpoint-section-title">Headers (Optional):</div>
+                    <table>
+                        <tr>
+                            <th>Header</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td><code>Idempotency-Key</code></td>
+                            <td>🆕 Unique key to safely retry requests. Returns existing claim if key matches.</td>
+                        </tr>
+                    </table>
+
+                    <div class="info-box">
+                        <strong>🆕 Async Mode Recommended:</strong> Use <code>POST /claim?async=true</code> to avoid timeout risk. Agent polls <code>GET /claims/{claim_id}</code> for status. Returns in &lt;1 second!
                     </div>
                 </div>
 
@@ -733,6 +761,141 @@
   "created_at": "2025-11-06T12:00:00Z",
   "paid_at": "2025-11-06T12:00:25Z"
 }</div>
+                </div>
+
+                <!-- Get Policies (NEW!) -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="http-method http-get">GET</span>
+                        <span class="endpoint-path">/policies?wallet=0x...</span>
+                        <span class="badge public">PUBLIC</span>
+                        <span class="badge" style="background: rgba(0, 212, 255, 0.2); color: var(--accent-primary);">🆕 NEW</span>
+                    </div>
+                    <p class="endpoint-description">
+                        Get all active policies for a wallet address. <strong>Solves agent memory problem!</strong> Agents can recover policy_id after context reset.
+                    </p>
+
+                    <div class="endpoint-section-title">Query Parameters:</div>
+                    <table>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Required</th>
+                        </tr>
+                        <tr>
+                            <td><code>wallet</code></td>
+                            <td>Agent's wallet address (0x...)</td>
+                            <td>Yes</td>
+                        </tr>
+                    </table>
+
+                    <div class="endpoint-section-title">Response (200 OK):</div>
+                    <div class="code-block">{
+  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+  "active_policies": [
+    {
+      "policy_id": "550e8400-e29b-41d4-a716-446655440000",
+      "merchant_url": "https://api.example.com",
+      "coverage_amount": 0.01,
+      "premium": 0.0001,
+      "status": "active",
+      "created_at": "2025-11-07T10:00:00Z",
+      "expires_at": "2025-11-08T10:00:00Z"
+    }
+  ],
+  "total_coverage": 0.01,
+  "claim_endpoint": "/claim",
+  "renew_endpoint": "/renew"
+}</div>
+
+                    <div class="info-box">
+                        <strong>Agent Memory Solution:</strong> Agents always know their wallet address (it's fundamental to their identity). No need to persist policy_id in memory - just query by wallet!
+                    </div>
+                </div>
+
+                <!-- Get Claim Status (NEW!) -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="http-method http-get">GET</span>
+                        <span class="endpoint-path">/claims/:claim_id</span>
+                        <span class="badge public">PUBLIC</span>
+                        <span class="badge" style="background: rgba(0, 212, 255, 0.2); color: var(--accent-primary);">🆕 NEW</span>
+                    </div>
+                    <p class="endpoint-description">
+                        Check claim processing status. Use for async claim polling or to recover after network errors.
+                    </p>
+
+                    <div class="endpoint-section-title">Response (200 OK):</div>
+                    <div class="code-block">{
+  "claim_id": "claim-abc123",
+  "policy_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "paid",  <span class="comment">// processing | paid | failed</span>
+  "payout_amount": 0.01,
+  "refund_tx_hash": "0x789abc...",
+  "proof_url": "/proofs/claim-abc123",
+  "created_at": "2025-11-08T10:00:00Z",
+  "paid_at": "2025-11-08T10:00:15Z",
+  "proof_generation_time_ms": 12500
+}</div>
+
+                    <div class="info-box">
+                        <strong>Use Case:</strong> Submit claim with <code>?async=true</code>, then poll this endpoint every 2 seconds until status is "paid" or "failed".
+                    </div>
+                </div>
+
+                <!-- Renew Policy (NEW!) -->
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="http-method http-post">POST</span>
+                        <span class="endpoint-path">/renew</span>
+                        <span class="badge required">x402 PAYMENT REQUIRED</span>
+                        <span class="badge" style="background: rgba(0, 212, 255, 0.2); color: var(--accent-primary);">🆕 NEW</span>
+                    </div>
+                    <p class="endpoint-description">
+                        Extend an existing policy before expiration. Avoid coverage gaps! Pro-rated fees based on extension duration (1-168 hours).
+                    </p>
+
+                    <div class="endpoint-section-title">Request Body:</div>
+                    <div class="code-block">{
+  "policy_id": "550e8400-e29b-41d4-a716-446655440000",
+  "extend_hours": 24  <span class="comment">// 1-168 hours (max 7 days)</span>
+}</div>
+
+                    <div class="endpoint-section-title">Response (200 OK):</div>
+                    <div class="code-block">{
+  "policy_id": "550e8400-e29b-41d4-a716-446655440000",
+  "old_expires_at": "2025-11-08T10:00:00Z",
+  "new_expires_at": "2025-11-09T10:00:00Z",
+  "extension_hours": 24,
+  "renewal_fee": 0.0001,  <span class="comment">// Pro-rated: 24h = full premium</span>
+  "renewal_count": 1,
+  "total_paid": 0.0002,  <span class="comment">// Original premium + renewal fees</span>
+  "status": "active"
+}</div>
+
+                    <div class="endpoint-section-title">Renewal Pricing (Pro-rated):</div>
+                    <table>
+                        <tr>
+                            <th>Extension</th>
+                            <th>Fee</th>
+                        </tr>
+                        <tr>
+                            <td>24 hours</td>
+                            <td>1 × premium (same as initial)</td>
+                        </tr>
+                        <tr>
+                            <td>12 hours</td>
+                            <td>0.5 × premium</td>
+                        </tr>
+                        <tr>
+                            <td>48 hours</td>
+                            <td>2 × premium</td>
+                        </tr>
+                    </table>
+
+                    <div class="info-box">
+                        <strong>Benefits:</strong> No coverage gaps • Same policy_id • Flexible duration • Cost-effective
+                    </div>
                 </div>
 
                 <!-- Dashboard Data -->

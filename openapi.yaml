@@ -1,13 +1,18 @@
 openapi: 3.0.3
 info:
   title: x402 Insurance API
-  version: 1.0.0
+  version: 2.2.0
   description: |
     Zero-Knowledge Proof verified insurance against x402 merchant fraud.
 
     ## Overview
     This API provides micropayment insurance for x402 protocol users. Agents can purchase
     insurance policies to protect against merchant failures, and submit claims with zkp proofs.
+
+    ## What's New in v2.2.0
+    - **Async Proof Generation**: Use `?async=true` on /claim to avoid timeout risk
+    - **Policy Renewal**: Extend policies before expiration with /renew endpoint
+    - **Agent Memory Solution**: Lookup policies by wallet address with /policies endpoint
 
     ## x402 Payment Protocol
     Certain endpoints require x402 payment. The payment flow:
@@ -202,7 +207,21 @@ paths:
         - Empty response body
         - Missing critical headers
 
+        **Async Mode (NEW in v2.2.0):**
+        Add `?async=true` query parameter to enable async processing:
+        - Returns immediately (202 Accepted) with claim_id
+        - Poll GET /claims/{claim_id} for status updates
+        - Eliminates timeout risk during proof generation
+
       tags: [claims]
+      parameters:
+        - name: async
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Enable async processing (returns 202 immediately)
       requestBody:
         required: true
         content:
@@ -221,11 +240,17 @@ paths:
                       server: "nginx"
       responses:
         '201':
-          description: Claim approved and refund issued
+          description: Claim approved and refund issued (sync mode)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClaimResponse'
+        '202':
+          description: Claim accepted for processing (async mode)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncClaimResponse'
         '400':
           description: Invalid claim or no fraud detected
           content:
@@ -240,6 +265,140 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           description: Proof generation or refund failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /claims/{claim_id}:
+    get:
+      summary: Get Claim Status
+      description: |
+        Retrieve the current status of a claim. Used for polling async claims.
+
+        **Claim Statuses:**
+        - `processing`: Proof generation in progress
+        - `paid`: Claim approved, refund issued
+        - `failed`: Claim processing failed
+
+      tags: [claims]
+      parameters:
+        - name: claim_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Claim ID (UUID)
+      responses:
+        '200':
+          description: Claim status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimStatusResponse'
+        '404':
+          description: Claim not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /policies:
+    get:
+      summary: Get Agent Policies
+      description: |
+        Retrieve all policies for a given agent wallet address.
+        Solves the agent memory problem by allowing agents to lookup their policies.
+
+        **Query Parameters:**
+        - `wallet`: Required. Ethereum address of the agent
+
+      tags: [policies]
+      parameters:
+        - name: wallet
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Agent's Ethereum wallet address
+          example: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+      responses:
+        '200':
+          description: List of policies for the wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoliciesResponse'
+        '400':
+          description: Missing or invalid wallet address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /renew:
+    post:
+      summary: Renew/Extend Policy
+      description: |
+        Extend an existing policy before expiration. Requires x402 payment.
+
+        **Features:**
+        - Extend by 1-168 hours (max 7 days)
+        - Pro-rated fees: (extend_hours / 24) × original_premium
+        - Same policy_id preserved
+        - Cannot renew expired policies
+
+        **x402 Payment Required:**
+        - Amount: Pro-rated renewal fee
+        - Asset: USDC on Base Mainnet
+        - Network: base
+
+        **Payment Flow:**
+        1. POST without payment → 402 response with renewal fee
+        2. Sign payment with wallet
+        3. POST with x402 headers → policy extended
+
+      tags: [policies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenewPolicyRequest'
+            examples:
+              renew_24h:
+                summary: Extend policy by 24 hours
+                value:
+                  policy_id: "123e4567-e89b-12d3-a456-426614174000"
+                  extend_hours: 24
+      responses:
+        '200':
+          description: Policy renewed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenewPolicyResponse'
+        '402':
+          description: Payment Required
+          headers:
+            X-Payment-Required:
+              schema:
+                type: string
+              description: x402 payment details for renewal fee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+        '400':
+          description: Invalid request or policy expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Policy not found
           content:
             application/json:
               schema:
@@ -563,6 +722,133 @@ components:
         proof_url:
           type: string
           description: URL to retrieve full proof data
+
+    AsyncClaimResponse:
+      type: object
+      properties:
+        claim_id:
+          type: string
+          format: uuid
+          description: Claim ID for polling status
+        status:
+          type: string
+          enum: [processing]
+          description: Initial status (always "processing")
+        poll_url:
+          type: string
+          description: URL to poll for claim status
+          example: "/claims/123e4567-e89b-12d3-a456-426614174000"
+        estimated_completion_seconds:
+          type: integer
+          description: Estimated time to completion
+          example: 20
+
+    ClaimStatusResponse:
+      type: object
+      properties:
+        claim_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [processing, paid, failed]
+          description: Current claim status
+        payout_amount:
+          type: number
+          nullable: true
+          description: Payout amount (null if still processing)
+        refund_tx_hash:
+          type: string
+          nullable: true
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Transaction hash (null if still processing)
+        error:
+          type: string
+          nullable: true
+          description: Error message (only if status is "failed")
+        proof:
+          type: string
+          nullable: true
+          description: Zero-knowledge proof (available when paid)
+        public_inputs:
+          type: array
+          nullable: true
+          items:
+            type: integer
+          description: Public inputs (available when paid)
+
+    PoliciesResponse:
+      type: object
+      properties:
+        wallet:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Queried wallet address
+        total_policies:
+          type: integer
+          description: Total number of policies for this wallet
+        active_policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+          description: Currently active policies
+        claimed_policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+          description: Policies that have been claimed
+        expired_policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+          description: Expired policies
+
+    RenewPolicyRequest:
+      type: object
+      required:
+        - policy_id
+        - extend_hours
+      properties:
+        policy_id:
+          type: string
+          format: uuid
+          description: ID of the policy to renew
+        extend_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+          description: Number of hours to extend (1-168 = 7 days)
+          example: 24
+
+    RenewPolicyResponse:
+      type: object
+      properties:
+        policy_id:
+          type: string
+          format: uuid
+        old_expires_at:
+          type: string
+          format: date-time
+          description: Previous expiration time
+        new_expires_at:
+          type: string
+          format: date-time
+          description: New expiration time after renewal
+        extend_hours:
+          type: integer
+          description: Number of hours extended
+        renewal_fee:
+          type: number
+          description: Pro-rated renewal fee paid
+        renewal_count:
+          type: integer
+          description: Total number of times this policy has been renewed
+        total_renewal_fees:
+          type: number
+          description: Total renewal fees paid for this policy
+        status:
+          type: string
+          enum: [active]
 
     Claim:
       allOf:
