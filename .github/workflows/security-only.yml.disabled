@@ -1,0 +1,50 @@
+# Lightweight Security-Only Workflow
+# Rename to .yml to enable (and disable ci.yml)
+
+name: Security Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "🔍 Scanning for hardcoded private keys..."
+          if grep -r "PRIVATE_KEY.*=.*0x[0-9a-fA-F]\{64\}" . --exclude-dir=venv --exclude-dir=.git; then
+            echo "❌ ERROR: Hardcoded private key found!"
+            exit 1
+          fi
+          echo "✅ No hardcoded private keys found"
+
+      - name: Check .env files not committed
+        run: |
+          if [ -f ".env" ]; then
+            echo "❌ ERROR: .env file should not be committed!"
+            exit 1
+          fi
+          echo "✅ No .env files committed"
+
+      - name: Verify .gitignore includes secrets
+        run: |
+          if ! grep -q "^\.env$" .gitignore; then
+            echo "⚠️  WARNING: .env not in .gitignore"
+          fi
+          if ! grep -q "^.*\.key$" .gitignore; then
+            echo "⚠️  WARNING: *.key not in .gitignore"
+          fi
+          echo "✅ .gitignore check complete"
+
+      - name: Check for TODO/FIXME in critical files
+        run: |
+          echo "🔍 Checking for TODOs in production code..."
+          grep -n "TODO\|FIXME" server.py blockchain.py database.py auth/*.py || true
+          echo "✅ TODO check complete"
