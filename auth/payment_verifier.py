@@ -11,7 +11,9 @@ from eth_account import Account
 from eth_account.messages import encode_structured_data
 from web3 import Web3
 import time
+import json
 import logging
+from pathlib import Path
 from typing import Optional, Dict, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
@@ -35,12 +37,19 @@ class PaymentDetails:
 class PaymentVerifier:
     """Verify x402 payments with proper signature validation"""
 
-    def __init__(self, backend_address: str, usdc_address: str):
+    def __init__(self, backend_address: str, usdc_address: str, nonce_storage_path: Optional[Path] = None):
         self.backend_address = Web3.to_checksum_address(backend_address)
         self.usdc_address = Web3.to_checksum_address(usdc_address)
-        self.nonce_cache = {}  # In-memory nonce tracking (use Redis in production)
+        self.nonce_storage_path = nonce_storage_path or Path("data/nonce_cache.json")
         self.cache_cleanup_interval = 3600  # Clean up old nonces every hour
         self.last_cleanup = time.time()
+
+        # Load nonce cache from disk if it exists (survives restarts)
+        self.nonce_cache = self._load_nonce_cache()
+        logger.info(
+            "PaymentVerifier initialized with %d cached nonces (persistent storage: %s)",
+            len(self.nonce_cache), self.nonce_storage_path
+        )
 
     def verify_payment(
         self,
@@ -264,6 +273,43 @@ class PaymentVerifier:
             logger.exception("Signature verification error: %s", e)
             return False
 
+    def _load_nonce_cache(self) -> Dict[str, int]:
+        """Load nonce cache from disk (persistent storage)"""
+        try:
+            if self.nonce_storage_path.exists():
+                with open(self.nonce_storage_path, 'r') as f:
+                    cache = json.load(f)
+                    # Clean up old nonces on load
+                    current_time = int(time.time())
+                    cutoff_time = current_time - 3600  # 1 hour ago
+                    cleaned_cache = {
+                        k: v for k, v in cache.items()
+                        if v >= cutoff_time
+                    }
+                    logger.info(
+                        "Loaded %d nonces from cache (%d expired, %d active)",
+                        len(cache), len(cache) - len(cleaned_cache), len(cleaned_cache)
+                    )
+                    return cleaned_cache
+            return {}
+        except Exception as e:
+            logger.warning("Failed to load nonce cache, starting fresh: %s", e)
+            return {}
+
+    def _save_nonce_cache(self):
+        """Save nonce cache to disk (persistent storage)"""
+        try:
+            # Ensure directory exists
+            self.nonce_storage_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write atomically
+            tmp_path = self.nonce_storage_path.with_suffix('.tmp')
+            with open(tmp_path, 'w') as f:
+                json.dump(self.nonce_cache, f, indent=2)
+            tmp_path.replace(self.nonce_storage_path)
+        except Exception as e:
+            logger.error("Failed to save nonce cache: %s", e)
+
     def _is_nonce_used(self, payer: str, nonce: str) -> bool:
         """Check if nonce has been used (replay attack prevention)"""
         key = f"{payer.lower()}:{nonce}"
@@ -275,9 +321,12 @@ class PaymentVerifier:
         return key in self.nonce_cache
 
     def _mark_nonce_used(self, payer: str, nonce: str, timestamp: int):
-        """Mark nonce as used"""
+        """Mark nonce as used and persist to disk"""
         key = f"{payer.lower()}:{nonce}"
         self.nonce_cache[key] = timestamp
+
+        # Save to disk (survives restart)
+        self._save_nonce_cache()
 
     def _cleanup_old_nonces(self):
         """Remove nonces older than 1 hour"""
@@ -293,7 +342,11 @@ class PaymentVerifier:
             del self.nonce_cache[key]
 
         self.last_cleanup = current_time
-        logger.info("Cleaned up %d old nonces", len(old_nonces))
+
+        # Save cleaned cache to disk
+        if old_nonces:
+            self._save_nonce_cache()
+            logger.info("Cleaned up %d old nonces, %d remain", len(old_nonces), len(self.nonce_cache))
 
 
 class SimplePaymentVerifier:

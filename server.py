@@ -188,6 +188,16 @@ def load_data(file_path: Path):
         return {}
 
 
+def save_data(file_path: Path, data: dict):
+    """Backward compatibility - save JSON file atomically"""
+    try:
+        # Use the database client's atomic write method
+        database.backend._save_json(file_path, data)
+    except Exception as e:
+        logger.exception("Failed to save data to %s: %s", file_path, e)
+        raise
+
+
 # Monetary helpers (USDC 6 decimals)
 MICRO = Decimal(10) ** 6
 

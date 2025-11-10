@@ -107,19 +107,43 @@ class JSONFileBackend:
             return {}
 
     def _save_json(self, file_path: Path, data: Dict):
-        """Save JSON atomically"""
+        """Save JSON atomically with proper file locking"""
         content = json.dumps(data, indent=2, default=str)
+
+        # Try to use file locking (Unix/Linux only)
         try:
-            with open(file_path, 'a+') as f:
-                try:
-                    import fcntl
-                    fcntl.flock(f, fcntl.LOCK_EX)
-                except Exception:
-                    pass
-            self._atomic_write(file_path, content)
-        except Exception as e:
-            logger.exception("Failed to save %s: %s", file_path, e)
-            raise
+            import fcntl
+            has_fcntl = True
+        except ImportError:
+            has_fcntl = False
+            logger.debug("fcntl not available (Windows?), skipping file locking")
+
+        if has_fcntl:
+            # Acquire lock, write atomically, then release
+            lock_file = file_path.with_suffix(file_path.suffix + ".lock")
+            try:
+                # Create lock file if it doesn't exist
+                lock_file.touch(exist_ok=True)
+
+                with open(lock_file, 'r+') as lock_fd:
+                    # Acquire exclusive lock (blocks until available)
+                    fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                    try:
+                        # Perform atomic write while lock is held
+                        self._atomic_write(file_path, content)
+                    finally:
+                        # Release lock
+                        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            except Exception as e:
+                logger.exception("Failed to save %s with locking: %s", file_path, e)
+                raise
+        else:
+            # No locking available (Windows), just do atomic write
+            try:
+                self._atomic_write(file_path, content)
+            except Exception as e:
+                logger.exception("Failed to save %s: %s", file_path, e)
+                raise
 
     # Policy operations
     def create_policy(self, policy_id: str, policy_data: Dict) -> bool:
@@ -342,9 +366,25 @@ class PostgreSQLBackend:
                 row = cur.fetchone()
                 return dict(row) if row else None
 
+    # Whitelist of allowed columns for policy updates (SQL injection prevention)
+    ALLOWED_POLICY_UPDATE_COLUMNS = {
+        'status', 'expires_at', 'renewed_at', 'renewal_count',
+        'total_renewal_fees', 'merchant_url', 'coverage_amount',
+        'coverage_amount_units', 'premium', 'premium_units'
+    }
+
     def update_policy(self, policy_id: str, updates: Dict) -> bool:
         try:
-            # Build UPDATE query dynamically
+            # Validate all column names against whitelist (SQL injection prevention)
+            invalid_columns = set(updates.keys()) - self.ALLOWED_POLICY_UPDATE_COLUMNS
+            if invalid_columns:
+                logger.error(
+                    "Attempted to update invalid columns: %s. Allowed: %s",
+                    invalid_columns, self.ALLOWED_POLICY_UPDATE_COLUMNS
+                )
+                raise ValueError(f"Invalid column names: {invalid_columns}")
+
+            # Build UPDATE query with validated column names
             set_clause = ", ".join([f"{k} = %s" for k in updates.keys()])
             values = list(updates.values()) + [policy_id]
 
@@ -355,6 +395,9 @@ class PostgreSQLBackend:
                         values
                     )
             return True
+        except ValueError:
+            # Re-raise validation errors
+            raise
         except Exception as e:
             logger.exception("Failed to update policy: %s", e)
             return False
@@ -418,8 +461,26 @@ class PostgreSQLBackend:
                 row = cur.fetchone()
                 return dict(row) if row else None
 
+    # Whitelist of allowed columns for claim updates (SQL injection prevention)
+    ALLOWED_CLAIM_UPDATE_COLUMNS = {
+        'status', 'proof', 'public_inputs', 'proof_generation_time_ms',
+        'verification_result', 'http_status', 'http_body_hash', 'http_headers',
+        'payout_amount', 'payout_amount_units', 'refund_tx_hash',
+        'recipient_address', 'paid_at', 'error', 'failed_at'
+    }
+
     def update_claim(self, claim_id: str, updates: Dict) -> bool:
         try:
+            # Validate all column names against whitelist (SQL injection prevention)
+            invalid_columns = set(updates.keys()) - self.ALLOWED_CLAIM_UPDATE_COLUMNS
+            if invalid_columns:
+                logger.error(
+                    "Attempted to update invalid columns: %s. Allowed: %s",
+                    invalid_columns, self.ALLOWED_CLAIM_UPDATE_COLUMNS
+                )
+                raise ValueError(f"Invalid column names: {invalid_columns}")
+
+            # Build UPDATE query with validated column names
             set_clause = ", ".join([f"{k} = %s" for k in updates.keys()])
             values = list(updates.values()) + [claim_id]
 
@@ -430,6 +491,9 @@ class PostgreSQLBackend:
                         values
                     )
             return True
+        except ValueError:
+            # Re-raise validation errors
+            raise
         except Exception as e:
             logger.exception("Failed to update claim: %s", e)
             return False

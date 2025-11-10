@@ -296,6 +296,258 @@
             border: 1px solid rgba(0, 255, 0, 0.3);
             color: #00FF00;
         }
+        /* Timeline View Styles */
+        .timeline-item {
+            background: rgba(26, 31, 58, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .timeline-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .timeline-merchant {
+            font-size: 12px;
+            color: var(--accent-secondary);
+            font-family: 'Courier New', monospace;
+            margin-left: 28px;
+        }
+
+        .timeline-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .timeline-status.active {
+            background: rgba(0, 255, 0, 0.15);
+            border: 1px solid rgba(0, 255, 0, 0.4);
+            color: #00FF88;
+        }
+
+        .timeline-status.claimed {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid rgba(255, 71, 87, 0.4);
+            color: #FF4757;
+        }
+
+        .timeline-status.expired {
+            background: rgba(184, 188, 200, 0.15);
+            border: 1px solid rgba(184, 188, 200, 0.4);
+            color: var(--text-secondary);
+        }
+
+        /* Timeline Progress Bar */
+        .timeline-progress-section {
+            margin: 20px 0;
+            padding: 15px 0;
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .timeline-stages {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .timeline-stage {
+            text-align: center;
+            flex: 1;
+        }
+
+        .timeline-stage-label {
+            margin-top: 5px;
+            font-size: 10px;
+        }
+
+        .timeline-bar-container {
+            position: relative;
+            height: 8px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .timeline-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .timeline-bar-fill::after {
+            content: '';
+            position: absolute;
+            right: -2px;
+            top: -4px;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border: 3px solid var(--bg-secondary);
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+        }
+
+        .timeline-time-remaining {
+            font-size: 12px;
+            color: var(--accent-primary);
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .timeline-time-remaining.warning {
+            color: var(--accent-warning);
+            animation: pulse 2s infinite;
+        }
+
+        .timeline-time-remaining.expired {
+            color: var(--accent-danger);
+        }
+
+        /* Timeline Details Grid */
+        .timeline-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .timeline-detail-item {
+            background: rgba(0, 212, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .timeline-detail-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .timeline-detail-value {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Claim Timeline (for claimed policies) */
+        .claim-timeline {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-danger);
+        }
+
+        .claim-timeline-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .claim-timeline-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .claim-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .claim-step-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .claim-step-time {
+            color: var(--accent-secondary);
+            font-family: 'Courier New', monospace;
+            min-width: 60px;
+        }
+
+        .timeline-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .timeline-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .timeline-btn-primary {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .timeline-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+        }
+
+        .timeline-btn-secondary {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: var(--accent-primary);
+        }
+
+        .timeline-btn-secondary:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
         .proof-result.error {
             background: rgba(255, 71, 87, 0.1);
             border: 1px solid rgba(255, 71, 87, 0.3);
@@ -813,91 +1065,236 @@ def detect_fraud(http_status, body_length):
                 document.getElementById('blockchainCard').style.display = 'none';
             }
 
-            // Recent policies
+            // Recent policies - Timeline View
             const policiesDiv = document.getElementById('recentPolicies');
             if (data.recent_policies && data.recent_policies.length > 0) {
-                policiesDiv.innerHTML = data.recent_policies.map(policy => `
-                    <div class="list-item">
-                        <div class="list-item-title">
-                            Policy ${policy.policy_id.substring(0, 8)}...
-                            ${policy.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
+                policiesDiv.innerHTML = data.recent_policies.map(policy => {
+                    const createdAt = new Date(policy.created_at);
+                    const expiresAt = new Date(policy.expires_at);
+                    const now = new Date();
+                    const totalDuration = expiresAt - createdAt;
+                    const elapsed = now - createdAt;
+                    const remaining = expiresAt - now;
+                    const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+                    // Time remaining calculation
+                    const hoursRemaining = Math.max(0, Math.floor(remaining / (1000 * 60 * 60)));
+                    const minutesRemaining = Math.max(0, Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60)));
+
+                    let timeRemainingText = '';
+                    let timeClass = '';
+                    if (remaining <= 0) {
+                        timeRemainingText = 'Expired';
+                        timeClass = 'expired';
+                    } else if (hoursRemaining < 2) {
+                        timeRemainingText = `⚠️ ${hoursRemaining}h ${minutesRemaining}m remaining`;
+                        timeClass = 'warning';
+                    } else {
+                        timeRemainingText = `${hoursRemaining}h remaining`;
+                        timeClass = '';
+                    }
+
+                    const statusIcon = policy.status === 'active' ? '🟢' :
+                                      policy.status === 'claimed' ? '🔴' : '⚪';
+
+                    return `
+                        <div class="timeline-item">
+                            <div class="timeline-header">
+                                <div>
+                                    <div class="timeline-title">
+                                        ${statusIcon} Policy #${policy.policy_id.substring(0, 8)}
+                                        ${policy.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
+                                    </div>
+                                    <div class="timeline-merchant">${policy.merchant_url || 'Unknown API'}</div>
+                                </div>
+                                <div class="timeline-status ${policy.status}">${policy.status}</div>
+                            </div>
+
+                            ${policy.status === 'active' ? `
+                            <div class="timeline-progress-section">
+                                <div class="timeline-stages">
+                                    <div class="timeline-stage">
+                                        <div>↓</div>
+                                        <div class="timeline-stage-label">Created</div>
+                                    </div>
+                                    <div class="timeline-stage">
+                                        <div>├────────────────┤</div>
+                                        <div class="timeline-stage-label">Active Period</div>
+                                    </div>
+                                    <div class="timeline-stage">
+                                        <div>↓</div>
+                                        <div class="timeline-stage-label">Expires</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-bar-container">
+                                    <div class="timeline-bar-fill" style="width: ${progressPercent}%"></div>
+                                </div>
+                                <div class="timeline-time-remaining ${timeClass}">${timeRemainingText}</div>
+                            </div>
+                            ` : ''}
+
+                            <div class="timeline-details">
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">💰 Coverage</div>
+                                    <div class="timeline-detail-value">$${(policy.coverage_amount / 1000000).toFixed(4)} USDC</div>
+                                </div>
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">💵 Premium Paid</div>
+                                    <div class="timeline-detail-value">$${(policy.premium / 1000000).toFixed(6)} USDC</div>
+                                </div>
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">🔗 Agent</div>
+                                    <div class="timeline-detail-value" style="font-size: 11px; font-family: monospace;">${policy.agent_address.substring(0, 10)}...</div>
+                                </div>
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">📅 Created</div>
+                                    <div class="timeline-detail-value" style="font-size: 11px;">${createdAt.toLocaleString()}</div>
+                                </div>
+                            </div>
+
+                            ${policy.status === 'active' ? `
+                            <div class="timeline-actions">
+                                <button class="timeline-btn timeline-btn-primary" onclick="alert('Renewal feature coming soon!')">🔄 Renew Policy</button>
+                                <button class="timeline-btn timeline-btn-secondary" onclick="alert('Policy ID: ${policy.policy_id}')">📋 Copy Policy ID</button>
+                            </div>
+                            ` : ''}
                         </div>
-                        <div class="list-item-meta">
-                            <span>💰 $${policy.coverage_amount.toLocaleString()}</span>
-                            <span>🔗 ${policy.agent_address.substring(0, 10)}...</span>
-                            <span class="status-badge ${policy.status}">${policy.status.toUpperCase()}</span>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
 
-            // Recent claims
+            // Recent claims - Timeline View
             const claimsDiv = document.getElementById('recentClaims');
             if (data.recent_claims && data.recent_claims.length > 0) {
                 claimsDiv.innerHTML = data.recent_claims.map((claim, index) => {
                     const claimId = claim.id || claim.claim_id;
                     const shortClaimId = claimId.substring(0, 8);
+                    const createdAt = new Date(claim.created_at);
+                    const paidAt = claim.paid_at ? new Date(claim.paid_at) : null;
 
                     // Decode public inputs
                     const publicInputs = claim.public_inputs || [];
                     const decoded = decodePublicInputs(publicInputs);
 
+                    // Calculate processing time
+                    const processingTime = paidAt ? ((paidAt - createdAt) / 1000).toFixed(0) : 'N/A';
+
                     return `
-                    <div class="list-item">
-                        <div class="list-item-title">
-                            Claim ${shortClaimId}...
-                            ${claim.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
-                        </div>
-                        <div class="list-item-meta">
-                            <span>💵 $${claim.payout_amount.toLocaleString()}</span>
-                            <span>📊 HTTP ${claim.http_status}</span>
-                            <span class="status-badge ${claim.status}">${claim.status.toUpperCase()}</span>
-                        </div>
-                        <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 10px;">
-                            <span>✅ ZK Proof verified</span>
-                            <button class="verification-toggle" onclick="toggleVerification('${claimId}', event)">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
-                                Show Verification Data
-                            </button>
-                        </div>
-                        <div id="verification-${claimId}" class="verification-section">
-                            <div class="verification-content">
-                                <div class="verification-field">
-                                    <div class="verification-label">🔐 Proof Hash</div>
-                                    <div class="verification-value">
-                                        <span style="flex: 1;">${claim.proof || 'N/A'}</span>
-                                        <button class="copy-btn" onclick="copyToClipboard('${claim.proof}', this)">Copy</button>
+                        <div class="timeline-item">
+                            <div class="timeline-header">
+                                <div>
+                                    <div class="timeline-title">
+                                        🔴 Claim #${shortClaimId}
+                                        ${claim.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
+                                    </div>
+                                    <div class="timeline-merchant">${claim.merchant_url || 'Unknown API'}</div>
+                                </div>
+                                <div class="timeline-status ${claim.status}">${claim.status}</div>
+                            </div>
+
+                            <div class="timeline-details">
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">💵 Payout Amount</div>
+                                    <div class="timeline-detail-value">$${(claim.payout_amount / 1000000).toFixed(4)} USDC</div>
+                                </div>
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">📊 HTTP Status</div>
+                                    <div class="timeline-detail-value">${claim.http_status} Error</div>
+                                </div>
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">⚡ Processing Time</div>
+                                    <div class="timeline-detail-value">${processingTime}s</div>
+                                </div>
+                                <div class="timeline-detail-item">
+                                    <div class="timeline-detail-label">✓ Fraud Detected</div>
+                                    <div class="timeline-detail-value">${decoded.fraudDetected ? 'Yes' : 'No'}</div>
+                                </div>
+                            </div>
+
+                            ${claim.status === 'paid' ? `
+                            <div class="claim-timeline">
+                                <div class="claim-timeline-title">📋 Claim Processing Timeline</div>
+                                <div class="claim-timeline-steps">
+                                    <div class="claim-step">
+                                        <div class="claim-step-icon">✓</div>
+                                        <div class="claim-step-time">${createdAt.toLocaleTimeString()}</div>
+                                        <div>You submitted claim</div>
+                                    </div>
+                                    <div class="claim-step">
+                                        <div class="claim-step-icon">✓</div>
+                                        <div class="claim-step-time">+${Math.max(0, processingTime - 5)}s</div>
+                                        <div>Proof generated ⚡</div>
+                                    </div>
+                                    <div class="claim-step">
+                                        <div class="claim-step-icon">✓</div>
+                                        <div class="claim-step-time">+${processingTime}s</div>
+                                        <div>USDC sent to your wallet 💰</div>
                                     </div>
                                 </div>
+                            </div>
+                            ` : ''}
 
-                                <div class="verification-field">
-                                    <div class="verification-label">📊 Public Inputs (Raw)</div>
-                                    <div class="verification-value">
-                                        <span style="flex: 1;">${JSON.stringify(publicInputs)}</span>
-                                        <button class="copy-btn" onclick="copyToClipboard('${JSON.stringify(publicInputs).replace(/'/g, "\\'")}', this)">Copy</button>
-                                    </div>
-                                    <div class="public-inputs-decoded">
-                                        <div><strong>Decoded:</strong></div>
-                                        <div>• Fraud Detected: <strong>${decoded.fraudDetected ? 'Yes' : 'No'}</strong></div>
-                                        <div>• HTTP Status: <strong>${decoded.httpStatus}</strong></div>
-                                        <div>• Body Length: <strong>${decoded.bodyLength} bytes</strong></div>
-                                        <div>• Payout Amount: <strong>$${decoded.payoutAmount.toLocaleString()}</strong></div>
+                            ${claim.refund_tx_hash ? `
+                            <div class="timeline-details" style="margin-top: 10px;">
+                                <div class="timeline-detail-item" style="grid-column: 1 / -1;">
+                                    <div class="timeline-detail-label">🔗 Transaction Hash</div>
+                                    <div class="timeline-detail-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">
+                                        ${claim.refund_tx_hash}
                                     </div>
                                 </div>
+                            </div>
+                            ` : ''}
 
-                                <div class="verification-field">
-                                    <div class="verification-label">🔗 Verify via curl</div>
-                                    <div class="verification-value">
-                                        <span style="flex: 1; font-size: 10px;">curl -X POST https://x402insurance.com/verify -H "Content-Type: application/json" -d '{"proof":"${claim.proof}","public_inputs":${JSON.stringify(publicInputs)}}'</span>
-                                        <button class="copy-btn" onclick="copyToClipboard(\`curl -X POST https://x402insurance.com/verify -H &quot;Content-Type: application/json&quot; -d '{&quot;proof&quot;:&quot;${claim.proof}&quot;,&quot;public_inputs&quot;:${JSON.stringify(publicInputs)}}'\`, this)">Copy</button>
+                            <div class="timeline-actions">
+                                <button class="timeline-btn timeline-btn-secondary" onclick="toggleVerification('${claimId}', event)">
+                                    🔐 View Proof Details
+                                </button>
+                                ${claim.refund_tx_hash ? `
+                                <button class="timeline-btn timeline-btn-secondary" onclick="window.open('https://basescan.org/tx/${claim.refund_tx_hash}', '_blank')">
+                                    🔗 View on Basescan
+                                </button>
+                                ` : ''}
+                            </div>
+
+                            <div id="verification-${claimId}" class="verification-section">
+                                <div class="verification-content">
+                                    <div class="verification-field">
+                                        <div class="verification-label">🔐 Proof Hash</div>
+                                        <div class="verification-value">
+                                            <span style="flex: 1;">${claim.proof || 'N/A'}</span>
+                                            <button class="copy-btn" onclick="copyToClipboard('${claim.proof}', this)">Copy</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="verification-field">
+                                        <div class="verification-label">📊 Public Inputs (Decoded)</div>
+                                        <div class="public-inputs-decoded">
+                                            <div>• Fraud Detected: <strong>${decoded.fraudDetected ? 'Yes ✓' : 'No'}</strong></div>
+                                            <div>• HTTP Status: <strong>${decoded.httpStatus}</strong></div>
+                                            <div>• Body Length: <strong>${decoded.bodyLength} bytes</strong></div>
+                                            <div>• Payout Amount: <strong>$${(decoded.payoutAmount / 1000000).toFixed(4)} USDC</strong></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="verification-field">
+                                        <div class="verification-label">📊 Public Inputs (Raw)</div>
+                                        <div class="verification-value">
+                                            <span style="flex: 1;">${JSON.stringify(publicInputs)}</span>
+                                            <button class="copy-btn" onclick="copyToClipboard('${JSON.stringify(publicInputs).replace(/'/g, "\\'")}', this)">Copy</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="verification-field">
+                                        <div class="verification-label">🔗 Verify via curl</div>
+                                        <div class="verification-value">
+                                            <span style="flex: 1; font-size: 10px;">curl -X POST https://x402insurance.com/verify -H "Content-Type: application/json" -d '{"proof":"${claim.proof}","public_inputs":${JSON.stringify(publicInputs)}}'</span>
+                                            <button class="copy-btn" onclick="copyToClipboard(\`curl -X POST https://x402insurance.com/verify -H &quot;Content-Type: application/json&quot; -d '{&quot;proof&quot;:&quot;${claim.proof}&quot;,&quot;public_inputs&quot;:${JSON.stringify(publicInputs)}}'\`, this)">Copy</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
                 }).join('');
             }
         }
