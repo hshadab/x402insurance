@@ -1207,7 +1207,7 @@ def detect_failure(http_status, body_length):
                                 </div>
                                 <div class="timeline-detail-item">
                                     <div class="timeline-detail-label">✓ Failure Detected</div>
-                                    <div class="timeline-detail-value">${decoded.fraudDetected ? 'Yes' : 'No'}</div>
+                                    <div class="timeline-detail-value">${decoded.failureDetected ? 'Yes' : 'No'}</div>
                                 </div>
                             </div>
 
@@ -1269,7 +1269,7 @@ def detect_failure(http_status, body_length):
                                     <div class="verification-field">
                                         <div class="verification-label">📊 Public Inputs (Decoded)</div>
                                         <div class="public-inputs-decoded">
-                                            <div>• Failure Detected: <strong>${decoded.fraudDetected ? 'Yes ✓' : 'No'}</strong></div>
+                                            <div>• Failure Detected: <strong>${decoded.failureDetected ? 'Yes ✓' : 'No'}</strong></div>
                                             <div>• HTTP Status: <strong>${decoded.httpStatus}</strong></div>
                                             <div>• Body Length: <strong>${decoded.bodyLength} bytes</strong></div>
                                             <div>• Payout Amount: <strong>$${(decoded.payoutAmount / 1000000).toFixed(4)} USDC</strong></div>
@@ -1306,10 +1306,10 @@ def detect_failure(http_status, body_length):
 
         // Decode public inputs
         function decodePublicInputs(publicInputs) {
-            // Expected format: [fraud_detected, http_status, body_length, payout_amount]
+            // Expected format: [is_failure, http_status, body_length, payout_amount]
             if (!publicInputs || publicInputs.length < 4) {
                 return {
-                    fraudDetected: false,
+                    failureDetected: false,
                     httpStatus: 0,
                     bodyLength: 0,
                     payoutAmount: 0
@@ -1317,10 +1317,10 @@ def detect_failure(http_status, body_length):
             }
 
             return {
-                fraudDetected: publicInputs[0] === 1,
+                failureDetected: publicInputs[0] === 1,
                 httpStatus: publicInputs[1],
                 bodyLength: publicInputs[2],
-                payoutAmount: publicInputs[3] / 100 // Convert from cents to dollars
+                payoutAmount: publicInputs[3]  // Already in micro-units
             };
         }
 

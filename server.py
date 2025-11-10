@@ -475,6 +475,8 @@ def dashboard_data():
             "status": "paid",
             "refund_tx_hash": "0xabc123def456789abc123def456789abc123def456789abc123def456789abc12",
             "proof": "0x1a2b3c4d...",
+            "public_inputs": [1, 503, 0, 2500],  # [is_failure, http_status, body_length, payout]
+            "paid_at": "2025-11-07T09:30:58Z",
             "created_at": "2025-11-07T09:30:45Z",
             "is_sample": True
         },
@@ -488,6 +490,8 @@ def dashboard_data():
             "status": "paid",
             "refund_tx_hash": "0xdef789abc123def789abc123def789abc123def789abc123def789abc123def78",
             "proof": "0x5e6f7g8h...",
+            "public_inputs": [1, 500, 0, 7500],  # [is_failure, http_status, body_length, payout]
+            "paid_at": "2025-11-06T18:12:35Z",
             "created_at": "2025-11-06T18:12:20Z",
             "is_sample": True
         },
@@ -501,6 +505,8 @@ def dashboard_data():
             "status": "paid",
             "refund_tx_hash": "0x9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m",
             "proof": "0x9i0j1k2l...",
+            "public_inputs": [1, 502, 0, 1000],  # [is_failure, http_status, body_length, payout]
+            "paid_at": "2025-11-06T12:05:22Z",
             "created_at": "2025-11-06T12:05:10Z",
             "is_sample": True
         }
