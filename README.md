@@ -65,9 +65,12 @@ Pay a 1% premium → Get coverage (up to $0.1 USDC per claim) → If API fails, 
 6. Proof verified → We pay agent X USDC FROM OUR RESERVES
    → Service keeps their payment, we absorb the loss
    → Example: Agent receives 0.01 USDC refund (100% of coverage)
+   → Refund TX on Base: Standard USDC ERC20 transfer
                     ↓
-7. Public proof published on-chain
-   → Anyone can verify we paid a legitimate claim
+7. Public proof published on-chain (Base Mainnet)
+   → Proof data stored in transaction input field
+   → Contains: claim_id, proof_hash, public_inputs, payout_amount, recipient
+   → Anyone can verify we paid a legitimate claim by checking Basescan
 ```
 
 **Pricing Model:**
@@ -137,6 +140,33 @@ Pay a 1% premium → Get coverage (up to $0.1 USDC per claim) → If API fails, 
 3. **Trustless Verification** - Math proves failure, not our word (future: fully on-chain)
 
 **Technology:** zkEngine with Nova/Spartan SNARKs on Bn256 curve
+
+### On-Chain Transactions
+
+Every insurance flow involves **three on-chain transactions** on Base Mainnet:
+
+1. **Premium Payment (Agent → Insurance Service)**
+   - Type: x402 agent-to-agent payment
+   - Agent pays premium (1% of coverage) to insurance service
+   - EIP-712 signed payment with nonce + timestamp
+   - Verified by insurance service before issuing policy
+
+2. **Refund Payment (Insurance Service → Agent)**
+   - Type: Standard USDC ERC20 transfer
+   - Insurance pays full coverage amount to agent
+   - Triggered after zkEngine proof verification
+   - Viewable on Basescan as regular USDC transfer
+
+3. **Proof Publication (Insurance Service → Self)**
+   - Type: Zero-value transaction with proof data
+   - Contains: claim_id, proof_hash, public_inputs, payout, recipient
+   - Stored in transaction input field as JSON
+   - Enables public audit of all claims
+
+**Example Claim:**
+- Refund TX: `0x29c71c423d09ca6101456e458b68022008b541ef78fa9cc76b399e45a3497a62`
+- Proof TX: `0x[proof_publication_tx]`
+- View on Basescan: https://basescan.org/address/0xf36B80afFb2e41418874FfA56B069f1Fe671FC35
 
 ## Quick Start
 

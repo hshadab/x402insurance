@@ -998,15 +998,20 @@ USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
             <div style="line-height: 1.8; color: var(--text-secondary);">
                 <p style="margin-bottom: 15px;">
                     <strong style="color: var(--accent-primary);">1. Agents Buy Insurance</strong><br/>
-                    Agents pay a premium (1% of coverage amount) via x402 protocol to insure against API failures and service downtime. Payments are verified on-chain.
+                    Agents pay a premium (1% of coverage amount) via <strong>x402 agent-to-agent payment</strong> (EIP-712 signed). Payment is verified before policy issuance.
                 </p>
                 <p style="margin-bottom: 15px;">
                     <strong style="color: var(--accent-primary);">2. zkEngine Generates Proofs</strong><br/>
-                    When an agent submits a claim, zkEngine analyzes the HTTP response and generates a zero-knowledge proof. The proof cryptographically certifies that failure conditions were met (e.g., status >= 500, empty response) without exposing the actual response data—like proving you know a password without revealing the password itself.
+                    When an agent submits a claim, zkEngine analyzes the HTTP response and generates a zero-knowledge proof (~22s). The proof cryptographically certifies that failure conditions were met (e.g., status >= 500, empty response) without exposing the actual response data.
                 </p>
-                <p>
-                    <strong style="color: var(--accent-primary);">3. Automatic USDC Refunds</strong><br/>
-                    If the proof verifies, USDC refunds are automatically issued on Base Mainnet. All proofs are publicly auditable.
+                <p style="margin-bottom: 15px;">
+                    <strong style="color: var(--accent-primary);">3. Refund + Proof Publication</strong><br/>
+                    Two on-chain transactions on Base Mainnet:
+                    <br/>• <strong>💰 Refund TX:</strong> Standard USDC transfer to agent
+                    <br/>• <strong>🔐 Proof TX:</strong> Proof data published for public audit (claim_id, proof_hash, public_inputs)
+                </p>
+                <p style="font-size: 12px; opacity: 0.8; margin-top: 15px; padding: 10px; background: rgba(0, 212, 255, 0.05); border-radius: 8px;">
+                    💡 <strong>Three On-Chain Transactions:</strong> Premium payment (x402), Refund (USDC), Proof publication (data). All viewable on Basescan.
                 </p>
             </div>
             <div class="code-block" style="margin-top: 20px;">
@@ -1140,7 +1145,7 @@ def detect_failure(http_status, body_length):
                                 </div>
                                 <div class="timeline-detail-item">
                                     <div class="timeline-detail-label">💵 Premium Paid</div>
-                                    <div class="timeline-detail-value">$${(policy.premium / 1000000).toFixed(6)} USDC</div>
+                                    <div class="timeline-detail-value">$${(policy.premium / 1000000).toFixed(6)} USDC (x402)</div>
                                 </div>
                                 <div class="timeline-detail-item">
                                     <div class="timeline-detail-label">🔗 Agent</div>
@@ -1234,14 +1239,24 @@ def detect_failure(http_status, body_length):
                             </div>
                             ` : ''}
 
-                            ${claim.refund_tx_hash ? `
+                            ${claim.refund_tx_hash || claim.proof_tx_hash ? `
                             <div class="timeline-details" style="margin-top: 10px;">
+                                ${claim.refund_tx_hash ? `
                                 <div class="timeline-detail-item" style="grid-column: 1 / -1;">
-                                    <div class="timeline-detail-label">🔗 Transaction Hash</div>
+                                    <div class="timeline-detail-label">💰 Refund Transaction</div>
                                     <div class="timeline-detail-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">
                                         ${claim.refund_tx_hash}
                                     </div>
                                 </div>
+                                ` : ''}
+                                ${claim.proof_tx_hash ? `
+                                <div class="timeline-detail-item" style="grid-column: 1 / -1;">
+                                    <div class="timeline-detail-label">🔐 Proof Publication</div>
+                                    <div class="timeline-detail-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">
+                                        ${claim.proof_tx_hash}
+                                    </div>
+                                </div>
+                                ` : ''}
                             </div>
                             ` : ''}
 
@@ -1251,7 +1266,12 @@ def detect_failure(http_status, body_length):
                                 </button>
                                 ${claim.refund_tx_hash ? `
                                 <button class="timeline-btn timeline-btn-secondary" onclick="window.open('https://basescan.org/tx/${claim.refund_tx_hash}', '_blank')">
-                                    🔗 View on Basescan
+                                    💰 Refund TX
+                                </button>
+                                ` : ''}
+                                ${claim.proof_tx_hash ? `
+                                <button class="timeline-btn timeline-btn-secondary" onclick="window.open('https://basescan.org/tx/${claim.proof_tx_hash}', '_blank')">
+                                    🔐 Proof TX
                                 </button>
                                 ` : ''}
                             </div>
