@@ -1,0 +1,11 @@
+# Docker Hub Configuration
+# Your pre-built images will be hosted here
+
+# Default Docker Hub username (change this!)
+DOCKER_USERNAME=hshadab
+
+# Image name
+IMAGE_NAME=x402insurance
+
+# Full image path
+# docker.io/hshadab/x402insurance:latest
