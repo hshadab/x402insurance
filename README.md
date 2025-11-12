@@ -141,6 +141,28 @@ Pay a 1% premium → Get coverage (up to $0.1 USDC per claim) → If API fails, 
 
 **Technology:** zkEngine with Nova/Spartan SNARKs on Bn256 curve
 
+### How Verification Works
+
+**Critical Security Feature:** Proof verification happens **OFF-CHAIN** before any refunds are issued.
+
+```
+1. Agent submits claim with HTTP response data
+2. zkEngine generates proof (~22s) ← OFF-CHAIN
+3. Server verifies proof ← OFF-CHAIN
+4. Server checks if failure detected ← OFF-CHAIN
+   └─ If invalid or no failure → REJECT (no refund)
+5. Server issues USDC refund ← ON-CHAIN (only if verified)
+6. Server publishes proof data ← ON-CHAIN (only if refund succeeds)
+```
+
+**Rejection Examples:**
+- ❌ 200 OK with body → REJECTED (no failure)
+- ❌ 404 with body → REJECTED (has response)
+- ✅ 503 error → ACCEPTED (server error)
+- ✅ Empty response → ACCEPTED (failure detected)
+
+📖 See [VERIFICATION_FLOW.md](docs/VERIFICATION_FLOW.md) for detailed explanation and test cases.
+
 ### On-Chain Transactions
 
 Every insurance flow involves **three on-chain transactions** on Base Mainnet:
@@ -424,12 +446,28 @@ curl -X POST http://localhost:8000/claim \
 
 ## 📚 Documentation
 
+### Quick Start
 - **[README.md](README.md)** (this file) - Overview and quick start
-- **[AGENT_DISCOVERY.md](AGENT_DISCOVERY.md)** - Agent integration guide (A2A, x402 Bazaar)
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment guide for Render
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment checklist
 - **[openapi.yaml](openapi.yaml)** - OpenAPI 3.0 specification
-- **[render.yaml](render.yaml)** - Render deployment configuration
+
+### Core Documentation
+- **[PRODUCTION_READY.md](docs/PRODUCTION_READY.md)** - Current production status
+- **[VERIFICATION_FLOW.md](docs/VERIFICATION_FLOW.md)** - How proof verification works
+  - ✅ Verification happens **OFF-CHAIN** before refunds
+  - ✅ Invalid claims are **REJECTED** (no refund)
+  - ✅ Only verified proofs published on-chain
+
+### Guides
+- **[Deployment Guide](docs/guides/DEPLOYMENT.md)** - Deploy to production
+- **[Production Setup](docs/guides/PRODUCTION_SETUP.md)** - Configuration guide
+- **[Wallet Setup](docs/guides/WALLET_SETUP_GUIDE.md)** - Base Mainnet wallet setup
+
+### Development
+- **[Agent Integration](docs/development/AGENT_DISCOVERY.md)** - x402 Bazaar integration
+- **[Payment Architecture](docs/development/PAYMENT_FLOW_ARCHITECTURE.md)** - Technical details
+- **[Future Improvements](docs/development/FUTURE_IMPROVEMENTS.md)** - Roadmap
+
+📖 **[Full Documentation Index](docs/README.md)**
 
 ## Architecture
 
