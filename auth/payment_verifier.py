@@ -8,7 +8,10 @@ Handles proper verification of x402 payments including:
 - Amount verification
 """
 from eth_account import Account
-from eth_account.messages import encode_structured_data
+try:
+    from eth_account.messages import encode_typed_data as encode_structured_data
+except ImportError:
+    from eth_account.messages import encode_structured_data
 from web3 import Web3
 import time
 import json

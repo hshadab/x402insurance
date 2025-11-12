@@ -5,6 +5,10 @@ Handles environment-specific configuration with secure defaults.
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Config:
