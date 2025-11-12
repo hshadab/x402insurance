@@ -294,6 +294,16 @@ def process_claim_async(claim_id: str):
             amount=claim['coverage_amount_units']
         )
 
+        # Publish proof data on-chain for public auditability (1-3 seconds)
+        logger.info("Publishing proof on-chain for claim: %s", claim_id)
+        proof_tx_hash = blockchain.publish_proof(
+            claim_id=claim_id,
+            proof_hash=proof_hex,
+            public_inputs=public_inputs,
+            payout_amount=claim['coverage_amount_units'],
+            recipient=claim['agent_address']
+        )
+
         # Update claim record with final status
         claim['proof'] = proof_hex
         claim['public_inputs'] = public_inputs
@@ -302,6 +312,7 @@ def process_claim_async(claim_id: str):
         claim['payout_amount'] = claim['coverage_amount']
         claim['payout_amount_units'] = claim['coverage_amount_units']
         claim['refund_tx_hash'] = refund_tx_hash
+        claim['proof_tx_hash'] = proof_tx_hash
         claim['recipient_address'] = claim['agent_address']
         claim['status'] = 'paid'
         claim['paid_at'] = iso_utc_now()
@@ -1376,6 +1387,9 @@ def claim():
     # Convert USDC to smallest units (6 decimals): 0.01 USDC = 10,000 units
     payout_amount_units = policy.get("coverage_amount_units") or to_micro(payout_amount)
 
+    # Create claim ID before issuing refund (needed for proof publication)
+    claim_id = str(uuid.uuid4())
+
     try:
         refund_tx_hash = blockchain.issue_refund(
             to_address=policy["agent_address"],
@@ -1384,8 +1398,21 @@ def claim():
     except Exception as e:
         return jsonify({"error": f"Refund failed: {str(e)}"}), 500
 
+    # Publish proof data on-chain for public auditability
+    try:
+        proof_tx_hash = blockchain.publish_proof(
+            claim_id=claim_id,
+            proof_hash=proof_hex,
+            public_inputs=public_inputs,
+            payout_amount=payout_amount_units,
+            recipient=policy["agent_address"]
+        )
+    except Exception as e:
+        # Log but don't fail - refund already issued
+        logger.warning("Proof publication failed for claim %s: %s", claim_id, e)
+        proof_tx_hash = f"0xERROR_{claim_id[:16]}" + "0" * 44
+
     # Create claim record
-    claim_id = str(uuid.uuid4())
     http_body_hash = hashlib.sha256(http_response["body"].encode()).hexdigest()
 
     claim_record = {
@@ -1401,6 +1428,7 @@ def claim():
         "payout_amount": payout_amount,
         "payout_amount_units": payout_amount_units,
         "refund_tx_hash": refund_tx_hash,
+        "proof_tx_hash": proof_tx_hash,
         "recipient_address": policy["agent_address"],
         "status": "paid",
         "created_at": iso_utc_now(),

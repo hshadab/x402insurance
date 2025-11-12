@@ -158,6 +158,100 @@ class BlockchainClient:
         # All retries failed
         raise Exception(f"Refund failed after {self.max_retries} attempts: {last_error}")
 
+    def publish_proof(
+        self,
+        claim_id: str,
+        proof_hash: str,
+        public_inputs: list,
+        payout_amount: int,
+        recipient: str
+    ) -> str:
+        """
+        Publish proof data on-chain as transaction input data
+
+        This stores the proof commitment on-chain for public auditability.
+        The proof itself is verified off-chain, but the commitment is immutable.
+
+        Args:
+            claim_id: Unique claim identifier
+            proof_hash: Hash of the zkEngine proof
+            public_inputs: [is_failure, http_status, body_length, payout]
+            payout_amount: Amount paid in USDC units
+            recipient: Address that received the payout
+
+        Returns:
+            Transaction hash of the proof publication
+        """
+        if not self.has_wallet:
+            # Mock mode
+            self.logger.info("Mock proof publication for claim: %s", claim_id)
+            return f"0xPROOF{claim_id[:16]}" + "0" * 48
+
+        try:
+            # Encode proof data as hex string for transaction input
+            # Format: claim_id|proof_hash|public_inputs|payout|recipient
+            proof_data = {
+                "claim_id": claim_id,
+                "proof_hash": proof_hash,
+                "public_inputs": public_inputs,
+                "payout_amount": payout_amount,
+                "recipient": recipient
+            }
+
+            # Convert to compact hex encoding
+            import json
+            data_json = json.dumps(proof_data, separators=(',', ':'))
+            data_hex = "0x" + data_json.encode('utf-8').hex()
+
+            # Get current nonce
+            nonce = self.w3.eth.get_transaction_count(self.account.address)
+
+            # Get gas price with limit
+            current_gas_price = self.w3.eth.gas_price
+            max_gas_price = self.w3.to_wei(self.max_gas_price_gwei, 'gwei')
+            gas_price = min(current_gas_price, max_gas_price)
+
+            # Build transaction with proof data in input field
+            # Send to self with 0 value, data contains proof
+            tx = {
+                'from': self.account.address,
+                'to': self.account.address,  # Send to self
+                'value': 0,
+                'data': data_hex,
+                'nonce': nonce,
+                'gas': 50000,  # Smaller than transfer
+                'gasPrice': gas_price,
+                'chainId': self.w3.eth.chain_id
+            }
+
+            # Sign transaction
+            signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
+
+            # Handle both old and new web3.py versions
+            raw_tx = signed_tx.raw_transaction if hasattr(signed_tx, 'raw_transaction') else signed_tx.rawTransaction
+
+            # Send transaction
+            tx_hash = self.w3.eth.send_raw_transaction(raw_tx)
+            self.logger.info(
+                "Proof published on-chain: claim=%s tx=%s",
+                claim_id,
+                tx_hash.hex()
+            )
+
+            # Wait for confirmation
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+
+            if receipt.status != 1:
+                raise Exception(f"Proof publication reverted: {tx_hash.hex()}")
+
+            return tx_hash.hex()
+
+        except Exception as e:
+            self.logger.error("Failed to publish proof on-chain: %s", e)
+            # Don't fail the claim if proof publication fails
+            # The refund was already issued
+            return f"0xERROR_{claim_id[:16]}" + "0" * 44
+
     def _send_refund_transaction(self, to_address: str, amount: int) -> str:
         """Internal method to send refund transaction"""
         # Get current nonce
