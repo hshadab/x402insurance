@@ -998,7 +998,7 @@ def health():
                 # Check wallet balances
                 wallet_address = config.BACKEND_WALLET_ADDRESS
                 eth_balance = blockchain.w3.eth.get_balance(wallet_address)
-                usdc_balance = blockchain.get_usdc_balance()
+                usdc_balance = blockchain.get_balance()
 
                 health_data["checks"]["wallet"] = {
                     "status": "configured",
@@ -1049,7 +1049,7 @@ def health():
                 total_coverage = sum(p.get('coverage_amount', 0) for p in active_policies)
 
                 if total_coverage > 0:
-                    usdc_balance = blockchain.get_usdc_balance()
+                    usdc_balance = blockchain.get_balance()
                     reserve_ratio = usdc_balance / total_coverage
                     min_reserve_ratio = config.MIN_RESERVE_RATIO
 
