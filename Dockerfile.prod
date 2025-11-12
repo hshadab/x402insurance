@@ -1,0 +1,76 @@
+# Optimized multi-stage build for Render.com deployment
+# Faster builds with production-only dependencies
+
+# Stage 1: Builder
+FROM python:3.11-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy production requirements only
+COPY requirements-prod.txt .
+
+# Install dependencies with caching
+# This layer will be cached if requirements-prod.txt doesn't change
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-prod.txt
+
+# Stage 2: Runtime (minimal image)
+FROM python:3.11-slim
+
+# Install only curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 x402user && \
+    mkdir -p /app/data /app/zkengine && \
+    chown -R x402user:x402user /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+# Copy application code (order matters for caching)
+# Copy zkEngine binary first (rarely changes)
+COPY --chown=x402user:x402user zkengine/ zkengine/
+
+# Copy Python modules
+COPY --chown=x402user:x402user *.py ./
+COPY --chown=x402user:x402user auth/ auth/
+COPY --chown=x402user:x402user static/ static/
+
+# Copy config files
+COPY --chown=x402user:x402user config.py .
+
+# Create data directory
+RUN mkdir -p data logs && \
+    chown -R x402user:x402user data logs
+
+# Switch to non-root user
+USER x402user
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Environment
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENV=production
+
+# Use gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "server:app"]

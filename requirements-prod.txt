@@ -1,0 +1,25 @@
+# Production-only dependencies (faster deployment)
+# This file excludes test/dev dependencies to speed up Render deployment
+
+# Core dependencies
+flask==3.0.0
+web3==6.11.0
+python-dotenv==1.0.0
+httpx==0.25.1
+gunicorn==21.2.0
+pyyaml==6.0.1
+
+# Rate limiting
+flask-limiter==3.5.0
+flask-cors==4.0.0
+
+# Enhanced crypto/signing
+eth-account==0.10.0
+
+# Monitoring
+sentry-sdk[flask]==1.38.0
+
+# Optional: PostgreSQL support (only if using Postgres)
+# Commented out for faster deployment with JSON storage
+# Uncomment if you add a Postgres database in Render
+# psycopg2-binary==2.9.9

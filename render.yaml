@@ -1,0 +1,103 @@
+services:
+  # Web service for x402 Insurance API
+  - type: web
+    name: x402-insurance
+    runtime: docker
+    region: oregon  # Choose closest to your users
+    plan: starter  # Free tier, upgrade to standard for production
+
+    # Health check endpoint
+    healthCheckPath: /health
+
+    # Environment variables (set secrets in Render dashboard)
+    envVars:
+      - key: ENV
+        value: production
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 8000
+
+      # Blockchain - BASE MAINNET
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: USDC_CONTRACT_ADDRESS
+        value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - key: CHAIN_ID
+        value: 8453
+
+      # Secrets (SET THESE IN RENDER DASHBOARD - DO NOT COMMIT)
+      - key: BACKEND_WALLET_PRIVATE_KEY
+        sync: false  # Manually set in dashboard
+      - key: BACKEND_WALLET_ADDRESS
+        sync: false  # Manually set in dashboard
+
+      # zkEngine
+      - key: ZKENGINE_BINARY_PATH
+        value: ./zkengine/fraud_detector
+      - key: ZKENGINE_TIMEOUT
+        value: 60
+
+      # Insurance config
+      - key: PREMIUM_PERCENTAGE
+        value: 0.01
+      - key: MAX_COVERAGE_USDC
+        value: 0.1
+      - key: POLICY_DURATION_HOURS
+        value: 24
+
+      # Payment verification
+      - key: PAYMENT_VERIFICATION_MODE
+        value: full
+      - key: PAYMENT_MAX_AGE_SECONDS
+        value: 300
+
+      # Database (use JSON for now, upgrade to PostgreSQL later)
+      - key: DATABASE_URL
+        value: json://data/policies.json
+
+      # CORS
+      - key: ALLOWED_ORIGINS
+        value: "*"  # Change to your domain in production
+
+      # Rate limiting
+      - key: RATE_LIMIT_DEFAULT
+        value: 200 per day
+      - key: RATE_LIMIT_INSURE
+        value: 50 per hour
+      - key: RATE_LIMIT_CLAIM
+        value: 10 per hour
+
+      # Optional: Sentry for monitoring
+      # - key: SENTRY_DSN
+      #   sync: false
+      # - key: SENTRY_ENVIRONMENT
+      #   value: production
+
+    # Automatic deployments from main branch
+    autoDeploy: true
+
+    # Build filter - only deploy when relevant files change
+    buildFilter:
+      paths:
+        - server.py
+        - requirements.txt
+        - Dockerfile
+        - zkengine/**
+        - auth/**
+        - static/**
+      ignoredPaths:
+        - docs/**
+        - tests/**
+        - "*.md"
+        - ".github/**"
+
+    # Docker build settings (use optimized production Dockerfile)
+    dockerfilePath: ./Dockerfile.prod
+    dockerContext: .
+
+    # Disk for persistent data (policies, claims)
+    disk:
+      name: x402-data
+      mountPath: /app/data
+      sizeGB: 1
