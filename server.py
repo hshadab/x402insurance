@@ -38,7 +38,7 @@ from typing import Tuple, List, Optional
 from zkengine_client import ZKEngineClient
 from blockchain import BlockchainClient
 from database import DatabaseClient
-from auth.payment_verifier import PaymentVerifier, SimplePaymentVerifier
+from auth.payment_verifier import PaymentVerifier, SimplePaymentVerifier, FacilitatorPaymentVerifier
 from tasks.reserve_monitor import ReserveMonitor
 from config import get_config
 
@@ -150,17 +150,25 @@ database = DatabaseClient(
 
 # Payment Verifier
 if config.PAYMENT_VERIFICATION_MODE == "full" and BACKEND_ADDRESS:
-    payment_verifier = PaymentVerifier(
+    payment_verifier = FacilitatorPaymentVerifier(
+        backend_address=BACKEND_ADDRESS,
+        usdc_address=config.USDC_CONTRACT_ADDRESS,
+        facilitator_url=config.FACILITATOR_URL,
+        chain_id=config.CHAIN_ID,
+    )
+    logger.info("Using FACILITATOR payment verification (V2, chain_id=%d, facilitator=%s)", config.CHAIN_ID, config.FACILITATOR_URL)
+    # Keep EIP-712 verifier as fallback
+    eip712_verifier = PaymentVerifier(
         backend_address=BACKEND_ADDRESS,
         usdc_address=config.USDC_CONTRACT_ADDRESS,
         chain_id=config.CHAIN_ID
     )
-    logger.info("Using FULL payment verification (EIP-712 signatures, chain_id=%d)", config.CHAIN_ID)
 else:
     payment_verifier = SimplePaymentVerifier(
         backend_address=BACKEND_ADDRESS or "0x0000000000000000000000000000000000000000",
         usdc_address=config.USDC_CONTRACT_ADDRESS
     )
+    eip712_verifier = None
     logger.info("Using SIMPLE payment verification (testing mode)")
 
 # Reserve Monitor
@@ -329,25 +337,16 @@ def process_claim_async(claim_id: str):
             amount=claim['coverage_amount_units']
         )
 
-        # Publish proof data on-chain for public auditability (1-3 seconds)
-        logger.info("Publishing proof on-chain for claim: %s", claim_id)
-        proof_tx_hash = blockchain.publish_proof(
-            claim_id=claim_id,
-            proof_hash=proof_hex,
-            public_inputs=public_inputs,
-            payout_amount=claim['coverage_amount_units'],
-            recipient=claim['agent_address']
-        )
-
         # Update claim record with final status
         claim['proof'] = proof_hex
         claim['public_inputs'] = public_inputs
+        claim['proof_data'] = zkengine.get_last_proof_data()
+        claim['instance_data'] = zkengine.get_last_instance_data()
         claim['proof_generation_time_ms'] = gen_time_ms
         claim['verification_result'] = True
         claim['payout_amount'] = claim['coverage_amount']
         claim['payout_amount_units'] = claim['coverage_amount_units']
         claim['refund_tx_hash'] = refund_tx_hash
-        claim['proof_tx_hash'] = proof_tx_hash
         claim['recipient_address'] = claim['agent_address']
         claim['status'] = 'paid'
         claim['paid_at'] = iso_utc_now()
@@ -382,10 +381,16 @@ def process_claim_async(claim_id: str):
 
 @app.before_request
 def handle_x402_payment():
-    """Capture X-Payment header for verification in /insure, /claim, and /renew endpoints."""
-    # Capture payment headers for endpoints that may require x402 payment
+    """Capture payment headers for verification in /insure, /claim, and /renew endpoints.
+    V2 uses PAYMENT-SIGNATURE, V1 uses X-Payment (kept as fallback).
+    """
     if request.method == 'POST' and request.path in ['/insure', '/claim', '/renew']:
-        g.payment_header = request.headers.get('X-Payment') or request.headers.get('X-PAYMENT')
+        # V2 header first, then V1 fallback
+        g.payment_header = (
+            request.headers.get('PAYMENT-SIGNATURE')
+            or request.headers.get('X-Payment')
+            or request.headers.get('X-PAYMENT')
+        )
         g.payer_header = request.headers.get('X-Payer') or request.headers.get('X-FROM-ADDRESS')
 
 
@@ -409,7 +414,7 @@ def api_info():
     return jsonify({
         "service": "x402 Insurance API",
         "version": "1.0.0",
-        "x402Version": 1,
+        "x402Version": 2,
         "description": "ZKP-verified insurance for x402 API failures. Protect your micropayment API calls from service downtime and errors with zero-knowledge proof verified insurance.",
         "category": "insurance",
         "provider": "x402 Insurance",
@@ -424,18 +429,19 @@ def api_info():
             "get_proof": "GET /proofs/<claim_id> (public)"
         },
         "x402": {
-            "paymentRequired": {
-                "/insure": {
+            "accepts": [
+                {
                     "scheme": "exact",
-                    "network": "base",
+                    "network": config.CAIP2_NETWORK,
                     "maxAmountRequired": str(int(MAX_COVERAGE * PREMIUM_PERCENTAGE * 1_000_000)),
                     "asset": USDC_ADDRESS,
                     "payTo": BACKEND_ADDRESS,
                     "description": "Insurance premium (1% of requested coverage)",
-                    "mimeType": "application/json",
-                    "maxTimeoutSeconds": 60
+                    "maxTimeoutSeconds": 60,
+                    "extra": {}
                 }
-            }
+            ],
+            "resource": {"url": "/insure", "method": "POST"}
         },
         "status": "operational",
         "links": {
@@ -623,7 +629,7 @@ def pricing_info():
             "percentage_display": f"{PREMIUM_PERCENTAGE * 100}%",
             "calculation": "premium = coverage × percentage",
             "currency": "USDC",
-            "network": "base",
+            "network": config.CAIP2_NETWORK,
             "examples": {
                 "0.01_usdc_coverage": {"coverage": 0.01, "premium": 0.0001, "units": 100},
                 "0.05_usdc_coverage": {"coverage": 0.05, "premium": 0.0005, "units": 500},
@@ -645,7 +651,7 @@ def pricing_info():
         },
         "payment": {
             "protocol": "x402",
-            "network": "base",
+            "network": config.CAIP2_NETWORK,
             "token": {
                 "symbol": "USDC",
                 "name": "USD Coin",
@@ -704,7 +710,7 @@ def agent_card():
     base_url = request.host_url.rstrip('/')
 
     return jsonify({
-        "x402Version": 1,
+        "x402Version": 2,
         "agentCardVersion": "1.0",
         "identity": {
             "name": "x402 Insurance",
@@ -722,7 +728,7 @@ def agent_card():
             "zkProofs": True,
             "instantRefunds": True,
             "micropayments": True,
-            "networks": ["base"],
+            "networks": [config.CAIP2_NETWORK],
             "protocols": ["x402", "a2a"]
         },
         "services": [
@@ -733,16 +739,19 @@ def agent_card():
                 "endpoint": f"{base_url}/insure",
                 "method": "POST",
                 "x402Required": True,
-                "payment": {
-                    "scheme": "exact",
-                    "network": "base",
-                    "maxAmountRequired": str(int(MAX_COVERAGE * PREMIUM_PERCENTAGE * 1_000_000)),
-                    "asset": USDC_ADDRESS,
-                    "payTo": BACKEND_ADDRESS,
-                    "description": f"Insurance premium (1% of coverage, max {MAX_COVERAGE * PREMIUM_PERCENTAGE} USDC for max coverage)",
-                    "maxTimeoutSeconds": 60,
-                    "note": "Actual amount varies based on requested coverage_amount (premium = coverage × 1%)"
-                },
+                "accepts": [
+                    {
+                        "scheme": "exact",
+                        "network": config.CAIP2_NETWORK,
+                        "maxAmountRequired": str(int(MAX_COVERAGE * PREMIUM_PERCENTAGE * 1_000_000)),
+                        "asset": USDC_ADDRESS,
+                        "payTo": BACKEND_ADDRESS,
+                        "description": f"Insurance premium (1% of coverage, max {MAX_COVERAGE * PREMIUM_PERCENTAGE} USDC for max coverage)",
+                        "maxTimeoutSeconds": 60,
+                        "extra": {},
+                        "note": "Actual amount varies based on requested coverage_amount (premium = coverage × 1%)"
+                    }
+                ],
                 "inputSchema": {
                     "type": "object",
                     "required": ["merchant_url", "coverage_amount"],
@@ -1172,21 +1181,27 @@ def insure():
     payer_header = getattr(g, 'payer_header', None)
 
     if not payment_header:
-        # Return proper 402 with required payment details
+        # Return proper 402 with V2 payment requirements
         required = {
-            "x402Version": 1,
-            "payment": {
-                "scheme": "exact",
-                "network": "base",
-                "amount": str(premium_units),
-                "asset": {"address": USDC_ADDRESS, "decimals": 6, "symbol": "USDC"},
-                "pay_to": BACKEND_ADDRESS,
-                "mimeType": "application/json",
-                "maxTimeoutSeconds": 60,
-                "description": "Insurance premium (1% of requested coverage)"
-            }
+            "x402Version": 2,
+            "accepts": [
+                {
+                    "scheme": "exact",
+                    "network": config.CAIP2_NETWORK,
+                    "amount": str(premium_units),
+                    "asset": USDC_ADDRESS,
+                    "payTo": BACKEND_ADDRESS,
+                    "maxTimeoutSeconds": 60,
+                    "extra": {},
+                    "description": "Insurance premium (1% of requested coverage)"
+                }
+            ],
+            "resource": {"url": "/insure", "method": "POST"}
         }
-        headers = {"X-Payment-Required": json.dumps(required["payment"])}
+        headers = {
+            "PAYMENT-REQUIRED": json.dumps(required["accepts"][0]),
+            "X-Payment-Required": json.dumps(required["accepts"][0]),  # V1 backward compat
+        }
         return jsonify(required), 402, headers
 
     # Verify payment
@@ -1201,12 +1216,24 @@ def insure():
         logger.warning("Payment verification failed for premium=%s units", premium_units)
         required = {
             "error": "Payment verification failed",
-            "expected_amount": str(premium_units),
-            "asset": {"address": USDC_ADDRESS, "decimals": 6, "symbol": "USDC"},
-            "pay_to": BACKEND_ADDRESS,
-            "network": "base"
+            "x402Version": 2,
+            "accepts": [
+                {
+                    "scheme": "exact",
+                    "network": config.CAIP2_NETWORK,
+                    "amount": str(premium_units),
+                    "asset": USDC_ADDRESS,
+                    "payTo": BACKEND_ADDRESS,
+                    "maxTimeoutSeconds": 60,
+                    "extra": {}
+                }
+            ],
+            "resource": {"url": "/insure", "method": "POST"}
         }
-        headers = {"X-Payment-Required": json.dumps(required)}
+        headers = {
+            "PAYMENT-REQUIRED": json.dumps(required["accepts"][0]),
+            "X-Payment-Required": json.dumps(required["accepts"][0]),
+        }
         return jsonify(required), 402, headers
 
     agent_address = payment_details.payer
@@ -1352,23 +1379,30 @@ def renew_policy():
     renewal_fee = policy['coverage_amount'] * PREMIUM_PERCENTAGE * days_extended
     renewal_fee_units = to_micro(renewal_fee)
 
-    # Check x402 payment
-    payment_header = request.headers.get('X-Payment')
+    # Check x402 payment (V2: PAYMENT-SIGNATURE, V1 fallback: X-Payment)
+    payment_header = (
+        request.headers.get('PAYMENT-SIGNATURE')
+        or request.headers.get('X-Payment')
+    )
     payer_header = request.headers.get('X-Payer')
 
     if not payment_header or not payer_header:
-        # Return 402 with renewal fee details
+        # Return 402 with V2 renewal fee details
         required = {
-            "x402Version": 1,
-            "payment": {
-                "scheme": "exact",
-                "network": "base",
-                "amount": str(renewal_fee_units),
-                "asset": USDC_ADDRESS,
-                "pay_to": BACKEND_ADDRESS,
-                "description": f"Policy renewal fee for {extend_hours} hours extension",
-                "maxTimeoutSeconds": 60
-            },
+            "x402Version": 2,
+            "accepts": [
+                {
+                    "scheme": "exact",
+                    "network": config.CAIP2_NETWORK,
+                    "amount": str(renewal_fee_units),
+                    "asset": USDC_ADDRESS,
+                    "payTo": BACKEND_ADDRESS,
+                    "description": f"Policy renewal fee for {extend_hours} hours extension",
+                    "maxTimeoutSeconds": 60,
+                    "extra": {}
+                }
+            ],
+            "resource": {"url": "/renew", "method": "POST"},
             "policy_id": policy_id,
             "extend_hours": extend_hours,
             "renewal_fee": renewal_fee,
@@ -1376,7 +1410,10 @@ def renew_policy():
             "current_expires_at": policy['expires_at'],
             "new_expires_at": (expires_at + timedelta(hours=extend_hours)).isoformat()
         }
-        headers = {"X-Payment-Required": json.dumps(required["payment"])}
+        headers = {
+            "PAYMENT-REQUIRED": json.dumps(required["accepts"][0]),
+            "X-Payment-Required": json.dumps(required["accepts"][0]),
+        }
         return jsonify(required), 402, headers
 
     # Verify payment
@@ -1527,22 +1564,28 @@ def claim():
         payer_header = getattr(g, 'payer_header', None)
 
         if not payment_header:
-            # Return 402 with payment requirement (nominal fee to prevent spam)
+            # Return 402 with V2 payment requirement (nominal fee to prevent spam)
             claim_fee_units = 100  # 0.0001 USDC nominal anti-spam fee
             required = {
-                "x402Version": 1,
-                "payment": {
-                    "scheme": "exact",
-                    "network": "base",
-                    "amount": str(claim_fee_units),
-                    "asset": {"address": USDC_ADDRESS, "decimals": 6, "symbol": "USDC"},
-                    "pay_to": BACKEND_ADDRESS,
-                    "mimeType": "application/json",
-                    "maxTimeoutSeconds": 60,
-                    "description": "Claim submission fee (anti-spam)"
-                }
+                "x402Version": 2,
+                "accepts": [
+                    {
+                        "scheme": "exact",
+                        "network": config.CAIP2_NETWORK,
+                        "amount": str(claim_fee_units),
+                        "asset": USDC_ADDRESS,
+                        "payTo": BACKEND_ADDRESS,
+                        "maxTimeoutSeconds": 60,
+                        "extra": {},
+                        "description": "Claim submission fee (anti-spam)"
+                    }
+                ],
+                "resource": {"url": "/claim", "method": "POST"}
             }
-            headers = {"X-Payment-Required": json.dumps(required["payment"])}
+            headers = {
+                "PAYMENT-REQUIRED": json.dumps(required["accepts"][0]),
+                "X-Payment-Required": json.dumps(required["accepts"][0]),
+            }
             return jsonify(required), 402, headers
 
         # Verify payment
@@ -1664,20 +1707,6 @@ def claim():
     except Exception as e:
         return jsonify({"error": f"Refund failed: {str(e)}"}), 500
 
-    # Publish proof data on-chain for public auditability
-    try:
-        proof_tx_hash = blockchain.publish_proof(
-            claim_id=claim_id,
-            proof_hash=proof_hex,
-            public_inputs=public_inputs,
-            payout_amount=payout_amount_units,
-            recipient=policy["agent_address"]
-        )
-    except Exception as e:
-        # Log but don't fail - refund already issued
-        logger.warning("Proof publication failed for claim %s: %s", claim_id, e)
-        proof_tx_hash = f"0xERROR_{claim_id[:16]}" + "0" * 44
-
     # Create claim record
     http_body_hash = hashlib.sha256(http_response["body"].encode()).hexdigest()
 
@@ -1686,6 +1715,8 @@ def claim():
         "policy_id": policy_id,
         "proof": proof_hex,
         "public_inputs": public_inputs,
+        "proof_data": zkengine.get_last_proof_data(),
+        "instance_data": zkengine.get_last_instance_data(),
         "proof_generation_time_ms": gen_time_ms,
         "verification_result": True,
         "http_status": http_response["status"],
@@ -1694,7 +1725,6 @@ def claim():
         "payout_amount": payout_amount,
         "payout_amount_units": payout_amount_units,
         "refund_tx_hash": refund_tx_hash,
-        "proof_tx_hash": proof_tx_hash,
         "recipient_address": policy["agent_address"],
         "status": "paid",
         "created_at": iso_utc_now(),
@@ -1784,12 +1814,28 @@ def verify():
     data = request.json
     proof = data.get('proof')
     public_inputs = data.get('public_inputs')
+    claim_id = data.get('claim_id')
+
+    # Allow verification by claim_id (looks up stored proof data)
+    proof_data = data.get('proof_data')
+    instance_data = data.get('instance_data')
+
+    if claim_id and (not proof or not public_inputs):
+        # Look up proof from stored claim
+        claims = load_data(CLAIMS_FILE)
+        claim = claims.get(claim_id)
+        if not claim:
+            return jsonify({"error": "Claim not found"}), 404
+        proof = proof or claim.get('proof')
+        public_inputs = public_inputs or claim.get('public_inputs')
+        proof_data = proof_data or claim.get('proof_data')
+        instance_data = instance_data or claim.get('instance_data')
 
     if not proof or not public_inputs:
-        return jsonify({"error": "Missing proof or public_inputs"}), 400
+        return jsonify({"error": "Missing proof or public_inputs (or provide claim_id)"}), 400
 
     try:
-        is_valid = zkengine.verify_proof(proof, public_inputs)
+        is_valid = zkengine.verify_proof(proof, public_inputs, proof_data=proof_data, instance_data=instance_data)
 
         failure_detected = public_inputs[0] == 1 if len(public_inputs) > 0 else False
         payout_amount = public_inputs[3] if len(public_inputs) > 3 else 0

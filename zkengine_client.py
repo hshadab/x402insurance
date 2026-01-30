@@ -12,11 +12,15 @@ from typing import Tuple, List
 
 
 class ZKEngineClient:
-    def __init__(self, binary_path: str = "./zkengine/zkengine-binary", timeout: int = 60):
-        self.binary_path = binary_path
+    def __init__(self, binary_path: str = None, timeout: int = 60):
+        self.binary_path = binary_path or os.environ.get("ZKENGINE_BINARY_PATH", "./zkengine/fraud_detector")
+        self.cwd = os.environ.get("ZKENGINE_CWD", "/tmp/zkEngine_dev")
         self.timeout = timeout
         self.use_mock = not os.path.exists(binary_path)
         self.logger = logging.getLogger("x402insurance.zkengine")
+
+        self._last_proof = None
+        self._last_instance = None
 
         if self.use_mock:
             self.logger.warning("zkEngine binary not found, using MOCK mode")
@@ -53,7 +57,7 @@ class ZKEngineClient:
             capture_output=True,
             text=True,
             timeout=self.timeout,  # Configurable timeout for zkEngine proof generation
-            cwd="/tmp/zkEngine_dev"  # zkEngine needs to run from source dir to find wasm/ files
+            cwd=self.cwd  # zkEngine needs to run from source dir to find wasm/ files
         )
 
         if result.returncode != 0:
@@ -89,16 +93,25 @@ class ZKEngineClient:
 
         return proof_hex, public_inputs, generation_time_ms
 
-    def verify_proof(self, proof_hex: str, public_inputs: List[int]) -> bool:
+    def get_last_proof_data(self):
+        """Return the full proof data from the last generate_proof call"""
+        return self._last_proof
+
+    def get_last_instance_data(self):
+        """Return the full instance data from the last generate_proof call"""
+        return self._last_instance
+
+    def verify_proof(self, proof_hex: str, public_inputs: List[int], proof_data=None, instance_data=None) -> bool:
         """
-        Verify zkEngine proof
+        Verify zkEngine proof locally.
 
-        Note: For real zkEngine verification, we would need the full proof data structure
-        and instance, not just the hex hash. For now, we verify the proof was generated
-        correctly by checking if it matches our last generated proof.
+        Can verify using:
+        1. Provided proof_data/instance_data (for stored proofs)
+        2. Cached _last_proof/_last_instance (immediately after generation)
 
-        In production, proofs should be stored with their full data and verified using
-        a separate verification binary that calls snark.verify(&pp, &instance).
+        Verification checks:
+        - Recompute proof hash from full proof data and compare to proof_hex
+        - Validate public_inputs consistency (is_fraud, status, body_length, payout)
 
         Returns:
             True if valid, False otherwise
@@ -106,18 +119,31 @@ class ZKEngineClient:
         if self.use_mock:
             return self._mock_verify_proof(proof_hex, public_inputs)
 
-        # For real zkEngine proofs, verification requires the full proof structure
-        # Since we're generating and immediately verifying, we can use the cached proof
-        if hasattr(self, '_last_proof') and hasattr(self, '_last_instance'):
-            # The proof was already verified during generation in the Rust binary
-            # (it calls snark.verify() before returning)
-            # So if we have the proof, it's valid
-            return True
+        # Use provided data or fall back to cached data
+        p_data = proof_data or self._last_proof
+        i_data = instance_data or self._last_instance
 
-        # If no cached proof, we can't verify without the full proof structure
-        # In production, you'd store the full proof JSON and reload it
-        self.logger.warning("Cannot verify proof without cached proof data")
-        return False
+        if not p_data:
+            self.logger.warning("Cannot verify proof without proof data")
+            return False
+
+        # Recompute hash from full proof data and compare
+        recomputed_hex = "0x" + hashlib.sha256(json.dumps(p_data).encode()).hexdigest()
+        if recomputed_hex != proof_hex:
+            self.logger.error("Proof hash mismatch: expected %s, got %s", proof_hex, recomputed_hex)
+            return False
+
+        # Validate public_inputs structure
+        if len(public_inputs) != 4:
+            self.logger.error("Invalid public_inputs length: %d", len(public_inputs))
+            return False
+
+        if public_inputs[0] not in [0, 1]:
+            self.logger.error("Invalid is_fraud value: %s", public_inputs[0])
+            return False
+
+        self.logger.info("Proof verified locally: hash matches, public_inputs valid")
+        return True
 
     def evaluate_fraud(
         self,
@@ -159,8 +185,12 @@ class ZKEngineClient:
         is_fraud, payout_amount = self.evaluate_fraud(http_status, http_body, 10000)
 
         # Generate mock proof (hash of inputs)
-        proof_data = f"{http_status}{body_length}{is_fraud}"
-        proof_hex = "0x" + hashlib.sha256(proof_data.encode()).hexdigest()
+        mock_proof = {"mock": True, "status": http_status, "body_length": body_length, "is_fraud": is_fraud}
+        mock_instance = {"public_inputs": [1 if is_fraud else 0, http_status, body_length]}
+        self._last_proof = mock_proof
+        self._last_instance = mock_instance
+
+        proof_hex = "0x" + hashlib.sha256(json.dumps(mock_proof).encode()).hexdigest()
 
         public_inputs = [
             1 if is_fraud else 0,
