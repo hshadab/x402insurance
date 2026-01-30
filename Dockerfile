@@ -2,7 +2,7 @@
 # Production-ready Docker image with security best practices
 
 # Stage 1: Builder
-FROM python:3.11-slim as builder
+FROM public.ecr.aws/docker/library/python:3.11-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-prod.txt
 
 # Stage 2: Runtime
-FROM python:3.11-slim
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
