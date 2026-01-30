@@ -1,8 +1,7 @@
-# Optimized multi-stage build for Render.com deployment
-# Faster builds with production-only dependencies
+# Optimized multi-stage build for production deployment
 
-# Stage 1: Builder
-FROM python:3.11-slim as builder
+# Stage 1: Python dependency builder
+FROM python:3.11-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,7 +17,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements-prod.txt .
 
 # Install dependencies with caching
-# This layer will be cached if requirements-prod.txt doesn't change
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-prod.txt
 
@@ -32,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create non-root user
 RUN useradd -m -u 1000 x402user && \
-    mkdir -p /app/data /app/zkengine && \
+    mkdir -p /app/data /app/zkengine /app/zkengine_wasm && \
     chown -R x402user:x402user /app
 
 # Copy virtual environment from builder
@@ -42,35 +40,41 @@ ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
 
 # Copy application code (order matters for caching)
-# Copy zkEngine binary first (rarely changes)
+# Copy local zkEngine binary
 COPY --chown=x402user:x402user zkengine/ zkengine/
 
 # Copy Python modules
 COPY --chown=x402user:x402user *.py ./
 COPY --chown=x402user:x402user auth/ auth/
+COPY --chown=x402user:x402user tasks/ tasks/
 COPY --chown=x402user:x402user static/ static/
 
 # Copy config files
 COPY --chown=x402user:x402user config.py .
+COPY --chown=x402user:x402user openapi.yaml .
 
 # Create data directory
 RUN mkdir -p data logs && \
-    chown -R x402user:x402user data logs
+    chown -R x402user:x402user data logs && \
+    chmod +x /app/zkengine/fraud_detector
 
 # Switch to non-root user
 USER x402user
 
-# Expose port
+# Expose ports (8000 for Render/standard, 8080 for AgentCore)
 EXPOSE 8000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Environment
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    ENV=production
+    ENV=production \
+    ZKENGINE_BINARY_PATH=./zkengine/fraud_detector \
+    ZKENGINE_CWD=/app/zkengine_wasm
 
-# Use gunicorn for production
+# Default: gunicorn on port 8000 (override PORT=8080 for AgentCore)
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "server:app"]

@@ -15,9 +15,9 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements and install dependencies
-COPY requirements.txt .
+COPY requirements-prod.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-prod.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim
@@ -44,22 +44,26 @@ COPY --chown=x402user:x402user . .
 
 # Create necessary directories with proper permissions
 RUN mkdir -p data logs && \
-    chown -R x402user:x402user data logs
+    chown -R x402user:x402user data logs && \
+    chmod +x /app/zkengine/fraud_detector || true
 
 # Switch to non-root user
 USER x402user
 
-# Expose port
+# Expose ports (8000 standard, 8080 AgentCore)
 EXPOSE 8000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    ENV=production
+    ENV=production \
+    ZKENGINE_BINARY_PATH=./zkengine/fraud_detector \
+    ZKENGINE_CWD=/app/zkengine
 
 # Run the application
-CMD ["python", "-u", "server.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "server:app"]
