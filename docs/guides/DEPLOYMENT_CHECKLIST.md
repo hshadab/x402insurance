@@ -88,7 +88,7 @@ Use this checklist to ensure a smooth deployment to Render.
 - [ ] **Check build logs**
   - Verify Python dependencies installed
   - Verify Rust installed
-  - Verify zkEngine compiled successfully
+  - Verify Jolt Atlas compiled successfully
   - No error messages in logs
 
 - [ ] **Test health endpoint**
@@ -175,10 +175,10 @@ If deployment fails, check:
    - Retry deployment (temporary network issue)
    - Upgrade to paid plan (more resources)
 
-2. **Build fails at zkEngine compilation**
+2. **Build fails at Jolt Atlas compilation**
    - Check Render build logs for specific error
    - Increase timeout in render.yaml
-   - Verify zkEngine repo is accessible
+   - Verify Jolt Atlas repo is accessible
 
 3. **Service starts but health check fails**
    - Check environment variables are set

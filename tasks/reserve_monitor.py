@@ -3,7 +3,9 @@ Reserve Monitoring and Alerts
 
 Monitors USDC reserves to ensure sufficient funds to pay claims.
 """
+import os
 import logging
+import httpx
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -36,15 +38,6 @@ class ReserveMonitor:
         """
         try:
             # Get current USDC balance
-            if not self.blockchain.has_wallet:
-                return {
-                    "status": "unknown",
-                    "message": "Blockchain client not configured",
-                    "reserves": 0,
-                    "liability": 0,
-                    "ratio": 0
-                }
-
             usdc_balance = self.blockchain.get_balance()
             usdc_balance_float = usdc_balance / 1_000_000  # Convert to USDC
 
@@ -104,7 +97,7 @@ class ReserveMonitor:
             }
 
     def _log_alert(self, health: Dict):
-        """Log reserve alerts"""
+        """Log reserve alerts and send webhook if configured"""
         current_time = datetime.now(timezone.utc)
 
         # Don't spam alerts - only alert once per hour
@@ -122,6 +115,21 @@ class ReserveMonitor:
         )
 
         self.last_alert_time = current_time
+
+        # Send webhook alert if configured
+        webhook_url = os.getenv("ALERT_WEBHOOK_URL", "")
+        if webhook_url:
+            try:
+                payload = {
+                    "text": "[%s] Reserve ratio: %.1f%% — %s" % (
+                        health['status'].upper(),
+                        health['ratio'] * 100,
+                        health['message'],
+                    )
+                }
+                httpx.post(webhook_url, json=payload, timeout=5.0)
+            except Exception:
+                logger.debug("Failed to send webhook alert", exc_info=True)
 
     def get_low_reserve_warning(self) -> Optional[str]:
         """

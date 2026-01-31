@@ -1,0 +1,46 @@
+# x402 Insurance Dashboard — Lightweight image for App Runner
+# No Jolt binary, no ONNX model, no blockchain deps beyond Flask
+
+FROM public.ecr.aws/docker/library/python:3.11-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc build-essential && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements-prod.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-prod.txt
+
+FROM public.ecr.aws/docker/library/python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1000 x402user && mkdir -p /app && chown -R x402user:x402user /app
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+# Copy only the files the dashboard needs
+COPY --chown=x402user:x402user static/ /app/static/
+COPY --chown=x402user:x402user blueprints/ /app/blueprints/
+COPY --chown=x402user:x402user app.py config.py extensions.py dashboard_server.py /app/
+COPY --chown=x402user:x402user requirements-prod.txt /app/
+
+USER x402user
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENV=production \
+    PORT=8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "30", "dashboard_server:app"]

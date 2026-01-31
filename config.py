@@ -15,6 +15,7 @@ class Config:
     """Base configuration"""
 
     # App
+    ENV = os.getenv("ENV", "development")
     DEBUG = False
     TESTING = False
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -28,10 +29,10 @@ class Config:
     DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 
     # Blockchain
-    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://sepolia.base.org")
+    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
     USDC_CONTRACT_ADDRESS = os.getenv(
         "USDC_CONTRACT_ADDRESS",
-        "0x036CbD53842c5426634e7929541eC2318f3dCF7e"  # Base Sepolia USDC
+        "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # Base Mainnet USDC
     )
     BACKEND_WALLET_PRIVATE_KEY = os.getenv("BACKEND_WALLET_PRIVATE_KEY")
     BACKEND_WALLET_ADDRESS = os.getenv("BACKEND_WALLET_ADDRESS")
@@ -40,8 +41,9 @@ class Config:
     MAX_GAS_PRICE_GWEI = int(os.getenv("MAX_GAS_PRICE_GWEI", 100))
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
 
-    # zkEngine
-    ZKENGINE_BINARY_PATH = os.getenv("ZKENGINE_BINARY_PATH", "./zkengine/zkengine-binary")
+    # Jolt Atlas Prover
+    JOLT_BINARY_PATH = os.getenv("JOLT_BINARY_PATH", "./jolt-atlas/jolt_claims_prover")
+    ONNX_MODEL_PATH = os.getenv("ONNX_MODEL_PATH", "./models/claim_classifier.onnx")
 
     # Insurance parameters
     PREMIUM_PERCENTAGE = float(os.getenv("PREMIUM_PERCENTAGE", "0.01"))  # 1%
@@ -57,85 +59,87 @@ class Config:
     RATE_LIMIT_RENEW = os.getenv("RATE_LIMIT_RENEW", "5 per hour")
 
     # Payment verification
-    PAYMENT_VERIFICATION_MODE = os.getenv(
-        "PAYMENT_VERIFICATION_MODE",
-        "simple"  # "simple" or "full"
-    )
     PAYMENT_MAX_AGE_SECONDS = int(os.getenv("PAYMENT_MAX_AGE_SECONDS", 300))
 
     # Reserve monitoring
     MIN_RESERVE_RATIO = float(os.getenv("MIN_RESERVE_RATIO", "1.5"))
+    ALERT_WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "")
 
     # Security
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")  # Comma-separated
-    REQUIRE_CLAIM_AUTHENTICATION = os.getenv("REQUIRE_CLAIM_AUTHENTICATION", "false").lower() in ["1", "true", "yes"]
+    REQUIRE_CLAIM_AUTHENTICATION = True
 
     # Timeouts (in seconds)
-    ZKENGINE_TIMEOUT = int(os.getenv("ZKENGINE_TIMEOUT", 60))
+    JOLT_TIMEOUT = int(os.getenv("JOLT_TIMEOUT", 60))
     BLOCKCHAIN_CONFIRMATION_TIMEOUT = int(os.getenv("BLOCKCHAIN_CONFIRMATION_TIMEOUT", 120))
 
     # Chain configuration
-    CHAIN_ID = int(os.getenv("CHAIN_ID", 84532))  # Base Sepolia default
+    CHAIN_ID = int(os.getenv("CHAIN_ID", 8453))  # Base Mainnet default
+
+    # CAIP-2 network identifier (derived from CHAIN_ID)
+    @property
+    def CAIP2_NETWORK(self):
+        return f"eip155:{self.CHAIN_ID}"
+
+    # x402 V2 Facilitator
+    FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402.org/facilitator")
 
     # Monitoring
-    SENTRY_DSN = os.getenv("SENTRY_DSN")  # Optional: Sentry error tracking
+    SENTRY_DSN = os.getenv("SENTRY_DSN")
     SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "development")
-    SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))  # 10% of transactions
+    SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+
+    # Redis / Huey task queue
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    HUEY_IMMEDIATE = os.getenv("HUEY_IMMEDIATE", "false").lower() in ["1", "true", "yes"]
+
+    # AgentCore service URL (used by dashboard to link/display)
+    AGENTCORE_SERVICE_URL = os.getenv(
+        "AGENTCORE_SERVICE_URL",
+        "https://4axkjkepdx.us-east-1.awsapprunner.com"
+    )
+
 
 
 class DevelopmentConfig(Config):
     """Development configuration"""
 
+    ENV = "development"
     DEBUG = True
     LOG_LEVEL = "DEBUG"
 
-    # Use testnet by default
-    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://sepolia.base.org")
-
-    # Simple payment verification for easier testing
-    PAYMENT_VERIFICATION_MODE = "simple"
+    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
 
 
 class ProductionConfig(Config):
     """Production configuration"""
 
+    ENV = "production"
     DEBUG = False
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-    # Require mainnet configuration
-    BASE_RPC_URL = os.getenv("BASE_RPC_URL")
-
-    # Require wallet configuration (validated at runtime, not import time)
-    # Validation happens in get_config() or when config is used
-
-    # Full payment verification in production
-    PAYMENT_VERIFICATION_MODE = "full"
-
-    # Stricter CORS - require explicit domain configuration
+    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
+    USDC_CONTRACT_ADDRESS = os.getenv(
+        "USDC_CONTRACT_ADDRESS",
+        "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # Base Mainnet USDC
+    )
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "")
-
-    # Require authentication for claims in production
-    REQUIRE_CLAIM_AUTHENTICATION = os.getenv("REQUIRE_CLAIM_AUTHENTICATION", "true").lower() in ["1", "true", "yes"]
-
-    # Base Mainnet chain ID
     CHAIN_ID = int(os.getenv("CHAIN_ID", 8453))  # Base Mainnet
-
-    # Monitoring (production)
     SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "production")
-    SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.2"))  # 20% in production
+    SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.2"))
 
 
 class TestingConfig(Config):
     """Testing configuration"""
 
+    ENV = "testing"
     TESTING = True
     DEBUG = True
     LOG_LEVEL = "DEBUG"
 
-    # Use mock services for testing
-    DATABASE_URL = None  # Use JSON files
-    PAYMENT_VERIFICATION_MODE = "simple"
+    DATABASE_URL = None
     RATE_LIMIT_ENABLED = False
+    HUEY_IMMEDIATE = True
 
 
 # Config selection
@@ -155,11 +159,13 @@ def get_config(env: str = None) -> Config:
 
     # Validate production config
     if isinstance(config, ProductionConfig):
+        import logging
+        _log = logging.getLogger("x402insurance.config")
         if not config.BASE_RPC_URL:
-            raise ValueError("BASE_RPC_URL must be set in production")
+            _log.warning("BASE_RPC_URL not set — blockchain operations will fail")
         if not config.BACKEND_WALLET_PRIVATE_KEY:
-            raise ValueError("BACKEND_WALLET_PRIVATE_KEY must be set in production")
+            _log.warning("BACKEND_WALLET_PRIVATE_KEY not set — blockchain operations will fail")
         if not config.BACKEND_WALLET_ADDRESS:
-            raise ValueError("BACKEND_WALLET_ADDRESS must be set in production")
+            _log.warning("BACKEND_WALLET_ADDRESS not set — blockchain operations will fail")
 
     return config

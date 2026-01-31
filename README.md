@@ -1,18 +1,66 @@
-# x402 Insurance
+# x402 Insurance v2.3.0
 
-**Zero-Knowledge Proof Verified Insurance for x402 API Failures**
+**Jolt Atlas zkML SNARK-Verified Insurance for x402 API Failures**
 
-Protect your AI agents from API downtime, timeouts, and service interruptions with instant,
-cryptographically-verified refunds on Base Mainnet.
+Live on **AWS Bedrock AgentCore** (us-east-1). Protect your AI agents from API downtime,
+timeouts, and service interruptions with instant, cryptographically-verified refunds on
+Base Mainnet.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![x402 Protocol](https://img.shields.io/badge/x402-Compatible-blue)](https://github.com/coinbase/x402)
+[![AgentCore](https://img.shields.io/badge/AWS-AgentCore-orange)](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html)
 
-## Status
+## Architecture
 
-🟢 Production Ready | 🤖 Agent Discoverable | 🚀 v2.2.0
-**Agent Readiness: 9.0/10**
-Date: 2025-11-08
+```
+                    ┌─────────────────────────────────┐
+                    │   AWS Bedrock AgentCore (8080)   │  ← Primary service
+                    │   agentcore_agent.py             │
+                    │                                  │
+                    │   All insurance logic:           │
+                    │   - POST /insure, /claim, /renew │
+                    │   - POST /verify                 │
+                    │   - Jolt Atlas SNARK proofs       │
+                    │   - USDC refunds on Base Mainnet │
+                    │   - x402 V2 payment verification │
+                    └─────────────────────────────────┘
+                                   │
+              Agent-to-agent via AgentCore runtime
+                                   │
+┌──────────────────────┐   ┌──────────────────────────────┐
+│  AI Agent / Client   │   │  App Runner Dashboard (8000) │  ← Read-only
+│  x402 V2 payments    │   │  dashboard_server.py         │
+│  PAYMENT-SIGNATURE   │   │                              │
+│  header              │   │  - Static dashboard UI       │
+└──────────────────────┘   │  - GET /health, /ping        │
+                           │  - GET /.well-known/agent-card│
+                           │  - GET /api, /api/pricing     │
+                           └──────────────────────────────┘
+```
+
+**AgentCore** runs the full insurance service — blockchain, proofs, payments, claims.
+**App Runner** serves a lightweight read-only dashboard for monitoring and agent discovery.
+
+## Live Deployment
+
+### Primary Service (Bedrock AgentCore)
+
+| | |
+|---|---|
+| **Agent** | `agentcore_agent` |
+| **ARN** | `arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo` |
+| **Region** | us-east-1 |
+| **Entry point** | `agentcore_agent.py` |
+
+### Dashboard (App Runner — Read-Only)
+
+| | |
+|---|---|
+| **URL** | **https://4axkjkepdx.us-east-1.awsapprunner.com** |
+| **Dashboard** | https://4axkjkepdx.us-east-1.awsapprunner.com/ |
+| **Agent Card** | https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known/agent-card.json |
+| **Health** | https://4axkjkepdx.us-east-1.awsapprunner.com/health |
+| **Entry point** | `dashboard_server.py` |
 
 ## The Problem
 
@@ -21,174 +69,146 @@ AI agents pay for x402 APIs but have **zero recourse** when services fail:
 - Empty responses from timeouts or crashes
 - Service downtime during maintenance or outages
 
-**Your USDC is gone forever.** x402 has no refund mechanism. ([GitHub Issue #508](https://github.com/coinbase/x402/issues/508))
-
-APIs fail constantly - not from fraud, but from normal operational issues. Your agents shouldn't lose money when this happens.
+**Your USDC is gone forever.** x402 has no refund mechanism.
 
 ## Our Solution
 
 **API Failure Insurance for x402 Agents:**
 
-Pay a 1% premium → Get coverage (up to $0.1 USDC per claim) → If API fails, instant refund
+Pay a 1% premium -> Get coverage (up to $0.1 USDC per claim) -> If API fails, instant refund
 
-✅ **1% Percentage Premium** - Pay only 1% of your coverage amount
-✅ **Up to 100x Protection** - Get 100% coverage for just 1% cost
-✅ **Instant USDC Refunds** - Get your money back in 15-30 seconds
-✅ **Zero-Knowledge Proofs** - Failure verification using zkEngine SNARKs
-✅ **Agent Discoverable** - Full x402 Bazaar compatibility
-✅ **Public Auditability** - Anyone can verify we paid legitimate claims
-✅ **Privacy-Preserving** - Service identity & API content stay private
-✅ **x402 Native (prototype)** - Minimal payment verification for testing
+- **1% Percentage Premium** — Pay only 1% of your coverage amount
+- **Up to 100x Protection** — Get 100% coverage for just 1% cost
+- **Instant USDC Refunds** — Get your money back in 15-30 seconds
+- **Jolt Atlas zkML Proofs** — Failure verification using ONNX model inference + SNARK proofs
+- **x402 V2 Payment Flow** — Facilitator-verified payments with on-chain settlement
+- **Server-Side Fraud Detection** — Server independently re-fetches merchant URL to verify claims
+- **Public Auditability** — Anyone can verify we paid legitimate claims
 
-## How It Works
+## What's New in v2.3.0
 
-### The Insurance Flow
+- **AgentCore-first architecture**: AgentCore is the primary service; App Runner serves a read-only dashboard
+- **x402 V2 Payment Flow**: Full facilitator-based verification and settlement via `https://x402.org/facilitator`
+- **Server-Side Re-fetch Fraud Detection**: `merchant_url` is required on policies — the server independently re-fetches it during claim processing to verify the failure
+- **Jolt Atlas 3-Argument Prover**: The prover binary now accepts `http_status`, `body_length`, and `coverage_amount_units` for accurate payout calculation in proofs
+- **Claim Response Enrichment**: Responses include `server_verified`, `server_http_status`, and `merchant_url`
+- **Agent Runner**: `agentcore_agent.py` includes autonomous x402 V2 payment helpers (`agent_purchase_policy`, `agent_submit_claim`)
 
-```
-1. Agent chooses coverage amount (e.g., 0.01 USDC) for their API call
-   → Pays 1% premium TO US (e.g., 0.0001 USDC)
-   → Policy created for 24 hours
-                    ↓
-2. Agent pays X USDC TO MERCHANT (via x402)
-   → Merchant receives payment (they keep it regardless)
-   → Example: Agent pays 0.01 USDC for API call
-                    ↓
-3. API/Service fails: Returns 503 error / empty response / goes offline
-                    ↓
-4. Agent submits claim with HTTP response data
-                    ↓
-5. zkEngine analyzes the HTTP response and generates zero-knowledge proof (~15s)
-   → Cryptographically certifies failure conditions were met (e.g., status >= 500)
-   → Without exposing actual response data—like proving you know a password
-     without revealing the password itself
-                    ↓
-6. Proof verified → We pay agent X USDC FROM OUR RESERVES
-   → Service keeps their payment, we absorb the loss
-   → Example: Agent receives 0.01 USDC refund (100% of coverage)
-   → Refund TX on Base: Standard USDC ERC20 transfer
-                    ↓
-7. Public proof published on-chain (Base Mainnet)
-   → Proof data stored in transaction input field
-   → Contains: claim_id, proof_hash, public_inputs, payout_amount, recipient
-   → Anyone can verify we paid a legitimate claim by checking Basescan
-```
-
-**Pricing Model:**
-- **Percentage Premium**: 1% of coverage amount
-- **Max Coverage**: 0.1 USDC per claim (ideal for micropayment protection)
-- **Duration**: 24 hours
-
-**Examples:**
-- **0.01 USDC coverage** → 0.0001 USDC premium (1%) = 100x protection
-- **0.05 USDC coverage** → 0.0005 USDC premium (1%) = 100x protection
-- **0.1 USDC coverage** → 0.001 USDC premium (1%) = 100x protection
-
-**Important:** This is insurance (we pay from reserves), not chargebacks (reversing service payment). From the agent's perspective, the outcome is the same: money back when the API fails to deliver.
-
-### Solving the Agent Memory Problem
-
-**Challenge:** AI agents have limited context windows and may forget their policy_id between insurance purchase and claim filing (could be hours or days later).
-
-**Solution:** Wallet-based policy lookup
-- Agents can always access their wallet address (it's fundamental to their identity)
-- GET /policies?wallet=0x... returns all active policies for that wallet
-- No need to store policy_id - just remember your wallet address
-- Query anytime to find policies and file claims
-
-**Why this matters:**
-- Agents don't need to maintain state between purchase and claim
-- Works even after context window resets or system restarts
-- Enables autonomous claim filing without human intervention
-- Compatible with all agent frameworks (no special storage required)
-
-### Failure Detection Rules
-
-**We issue refunds when services:**
-- Return HTTP status >= 500 (server errors: 500, 502, 503, 504)
-- Return empty response body (0 bytes)
-- Become unresponsive or timeout
-
-**We do NOT refund when:**
-- HTTP 200-299 (successful responses, even if content is unexpected)
-- HTTP 400-499 (client errors - agent's fault)
-- Response has content (service delivered something)
-
-**This covers normal operational failures:** server overload, crashes, maintenance, bugs, network issues - not malicious behavior.
-
-### Why Zero-Knowledge Proofs?
-
-**Problem:** How do we prove an API failed without exposing private data?
-
-**Solution:** zkEngine SNARKs prove the failure mathematically
-
-**What gets proven (public):**
-- ✅ HTTP status was >= 500 OR body length was 0
-- ✅ Failure detection logic executed correctly
-- ✅ Payout amount ≤ policy coverage
-- ✅ Agent had an active policy
-
-**What stays private (hidden):**
-- 🔒 Actual API response content
-- 🔒 Service URL/identity (only hash visible)
-- 🔒 HTTP headers and metadata
-- 🔒 Business logic details
-
-**Three Key Benefits:**
-
-1. **Public Auditability** - Anyone can verify we're paying legitimate claims (prevents us from abuse)
-2. **Privacy Preservation** - Service identity protected, no public shaming for downtime
-3. **Trustless Verification** - Math proves failure, not our word (future: fully on-chain)
-
-**Technology:** zkEngine with Nova/Spartan SNARKs on Bn256 curve
-
-### How Verification Works
-
-**Critical Security Feature:** Proof verification happens **OFF-CHAIN** before any refunds are issued.
+## Service Layout
 
 ```
-1. Agent submits claim with HTTP response data
-2. zkEngine generates proof (~22s) ← OFF-CHAIN
-3. Server verifies proof ← OFF-CHAIN
-4. Server checks if failure detected ← OFF-CHAIN
-   └─ If invalid or no failure → REJECT (no refund)
-5. Server issues USDC refund ← ON-CHAIN (only if verified)
-6. Server publishes proof data ← ON-CHAIN (only if refund succeeds)
+x402insurance/
+├── agentcore_agent.py          AWS Bedrock AgentCore entry point (port 8080)
+│                                Full service: policies, claims, proofs, payments
+│                                + x402 V2 agent payment helpers
+├── dashboard_server.py         App Runner entry point (port 8000)
+│                                Read-only: health, discovery, static dashboard
+├── app.py                      Flask factories
+│   ├── create_app()            Full service factory (all blueprints + services)
+│   └── create_dashboard_app()  Dashboard factory (health + discovery only)
+├── blueprints/
+│     policies.py    POST /insure, GET /policies, POST /renew
+│     claims.py      POST /claim, GET /claims/<id>, GET /proofs/<id>
+│     verify.py      POST /verify (public, rate-limited)
+│     discovery.py   GET /, /.well-known/agent-card.json, /api/*
+│     health.py      GET /health, /ping, /metrics, /api/reserves, /invocations
+├── Core Services
+│     auth/payment_verifier.py    x402 V2 facilitator verification
+│     database.py                 JSONFileBackend (dev) | PostgreSQLBackend (prod)
+│     blockchain.py               USDC refunds on Base via web3.py
+│     proof_client.py             Jolt Atlas SNARK proof generation & verification
+│     tasks/claim_processor.py    Async claims via Huey + periodic cleanup
+│     tasks/reserve_monitor.py    Reserve health monitoring & alerts
+│     extensions.py               Shared service instances + thread-safe metrics
+├── Dockerfile                  Full service image (Jolt binary + QEMU)
+└── Dockerfile.dashboard        Lightweight dashboard image (no Jolt/ONNX)
 ```
 
-**Rejection Examples:**
-- ❌ 200 OK with body → REJECTED (no failure)
-- ❌ 404 with body → REJECTED (has response)
-- ✅ 503 error → ACCEPTED (server error)
-- ✅ Empty response → ACCEPTED (failure detected)
+## x402 V2 Payment Flow
 
-📖 See [VERIFICATION_FLOW.md](docs/VERIFICATION_FLOW.md) for detailed explanation and test cases.
+All payment-protected endpoints (`/insure`, `/claim`, `/renew`) use the x402 V2 protocol:
 
-### On-Chain Transactions
+1. **POST without payment** — Server responds `402 Payment Required` with an `accepts` array:
+   ```json
+   {
+     "x402Version": 2,
+     "accepts": [{
+       "scheme": "exact",
+       "network": "eip155:8453",
+       "amount": "1000",
+       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+       "payTo": "0x0e9AFe2499211c3E35e570968d1047Fcf7488c60",
+       "maxTimeoutSeconds": 60
+     }]
+   }
+   ```
 
-Every insurance flow involves **three on-chain transactions** on Base Mainnet:
+2. **Sign EIP-712 typed data** with your wallet key, encoding payment details
 
-1. **Premium Payment (Agent → Insurance Service)**
-   - Type: x402 agent-to-agent payment
-   - Agent pays premium (1% of coverage) to insurance service
-   - EIP-712 signed payment with nonce + timestamp
-   - Verified by insurance service before issuing policy
+3. **Retry with `PAYMENT-SIGNATURE` header** — Base64-encoded JSON payment payload
 
-2. **Refund Payment (Insurance Service → Agent)**
-   - Type: Standard USDC ERC20 transfer
-   - Insurance pays full coverage amount to agent
-   - Triggered after zkEngine proof verification
-   - Viewable on Basescan as regular USDC transfer
+4. **Server verifies via facilitator** (`https://x402.org/facilitator/verify`) and settles on-chain
 
-3. **Proof Publication (Insurance Service → Self)**
-   - Type: Zero-value transaction with proof data
-   - Contains: claim_id, proof_hash, public_inputs, payout, recipient
-   - Stored in transaction input field as JSON
-   - Enables public audit of all claims
+The `agentcore_agent.py` module provides ready-to-use helper functions:
+```python
+from agentcore_agent import agent_purchase_policy, agent_submit_claim
 
-**Example Claim:**
-- Refund TX: `0x29c71c423d09ca6101456e458b68022008b541ef78fa9cc76b399e45a3497a62`
-- Proof TX: `0x[proof_publication_tx]`
-- View on Basescan: https://basescan.org/address/0xA7c563342543fBa03707EEa79fb5Aaad80228bC5
+policy = agent_purchase_policy(
+    server_url="http://localhost:8080",
+    merchant_url="https://api.example.com/data",
+    coverage_amount=0.01,
+    agent_address="0xYourAgentWallet",
+)
+
+claim = agent_submit_claim(
+    server_url="http://localhost:8080",
+    policy_id=policy["policy_id"],
+    http_status=503,
+    http_body="",
+    agent_address="0xYourAgentWallet",
+)
+```
+
+## Server-Side Fraud Detection
+
+When a claim is submitted, the server:
+1. Validates the policy is active and `merchant_url` matches
+2. **Independently re-fetches** the `merchant_url` to verify the failure
+3. Compares the agent-reported failure with the server's own observation
+4. Generates a Jolt Atlas SNARK proof over both data points
+5. Returns `server_verified` and `server_http_status` in the response
+
+This prevents agents from fabricating failures.
+
+## zkML Proof Pipeline (Jolt Atlas 3-Arg)
+
+Claims are verified using a **Jolt Atlas SNARK proof** of ONNX model inference:
+
+```
+HTTP response (status, body_length, coverage_amount_units)
+    |
+    v
+Jolt Atlas Prover Binary (3 arguments)
+    ./jolt_claims_prover <http_status> <body_length> <coverage_amount_units>
+    |
+    v
+ONNX Classifier (claim_classifier.onnx)
+    Model: 2-layer neural net trained on HTTP failure patterns
+    |
+    v
+SNARK Proof Generation
+    Proves correct inference execution (Dory commitment scheme)
+    Public inputs: [is_failure, http_status, body_length, payout_amount]
+    |
+    v
+Proof Verification + USDC Refund (if valid)
+```
+
+**Public inputs format:** `[is_failure, http_status, body_length, payout_amount]`
+- `is_failure`: 1 = API failure detected, 0 = no failure
+- `http_status`: Original HTTP status code (e.g. 503)
+- `body_length`: Response body length in bytes
+- `payout_amount`: Refund amount in micro-USDC (e.g. 10000 = $0.01)
 
 ## Quick Start
 
@@ -197,415 +217,112 @@ Every insurance flow involves **three on-chain transactions** on Base Mainnet:
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Configure environment (Base Sepolia recommended for dev)
-# Copy .env.example to .env and set values:
-#   BASE_RPC_URL=...           # use testnet for development
-#   USDC_CONTRACT_ADDRESS=...
-#   BACKEND_WALLET_PRIVATE_KEY=... (dev only)
-#   BACKEND_WALLET_ADDRESS=...
-#   PREMIUM_PERCENTAGE=0.01
-#   MAX_COVERAGE_USDC=0.1
+# 2. Configure environment
+# Copy .env.example to .env and set ALL required values:
+#   BACKEND_WALLET_PRIVATE_KEY (funded with ETH + USDC)
+#   BACKEND_WALLET_ADDRESS
+#   BASE_RPC_URL
+#   JOLT_BINARY_PATH (must point to Jolt Atlas prover binary)
+#   FACILITATOR_URL (default: https://x402.org/facilitator)
 
-# 3. Run server (mock zkEngine and minimal x402 verification)
-python server.py
+# 3. Build Jolt Atlas prover (requires Rust)
+cd jolt-prover && cargo build --release
+# Copy target/release/jolt_claims_prover to ./jolt-atlas/
+
+# 4. Run full service (AgentCore mode, port 8080)
+python agentcore_agent.py
+
+# 5. Run dashboard only (port 8000, no blockchain deps)
+python dashboard_server.py
 ```
-
-Server runs on **http://localhost:8000**
-
-📖 **Full Documentation:** See `AGENT_DISCOVERY.md`, `DEPLOYMENT.md` and other guides
-
-## 🤖 Agent Discovery
-
-Your service is fully discoverable by autonomous agents via:
-
-### x402 Bazaar
-Ready for listing in the x402 Bazaar discovery service:
-- ✅ Complete input/output JSON schemas
-- ✅ Rich metadata (category, tags, pricing)
-- ✅ x402Version field
-- ✅ Performance metrics
-- ✅ Agent-card.json for service discovery
-
-### Discovery Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `/.well-known/agent-card.json` | Service discovery agent card |
-| `/api` | API information & x402 metadata |
-| `/api/pricing` | Detailed pricing information |
-| `/api/schema` | OpenAPI 3.0 specification (JSON/YAML) |
-| `/api/dashboard` | Live statistics and metrics |
-
-See [AGENT_DISCOVERY.md](AGENT_DISCOVERY.md) for complete integration guide.
-
-## API Endpoints
-
-### 1. Lookup Active Policies (Solves Agent Memory Problem)
-
-**NEW: Find your policies when you need to file a claim**
-
-This endpoint solves the "agent memory problem" - agents with limited context windows can forget their policy_id between purchase and claim filing. Simply query with your wallet address to retrieve all active policies.
-
-```bash
-GET /policies?wallet=0x...
-
-Response:
-{
-  "wallet_address": "0x...",
-  "active_policies": [
-    {
-      "policy_id": "550e8400-e29b-41d4-a716-446655440000",
-      "merchant_url": "https://api.example.com",
-      "coverage_amount": 10000,
-      "premium": 100,
-      "status": "active",
-      "created_at": "2025-11-07T10:00:00Z",
-      "expires_at": "2025-11-08T10:00:00Z"
-    }
-  ],
-  "total_coverage": 10000,
-  "claim_endpoint": "/claim",
-  "note": "Use policy_id from any active policy to file a claim if merchant fails"
-}
-```
-
-**Usage in Agent Flow:**
-```python
-# When merchant fails and you need to file a claim:
-# 1. Get your wallet address (you always know this)
-my_wallet = agent.wallet.address
-
-# 2. Lookup your active policies
-policies = httpx.get(f"http://localhost:8000/policies?wallet={my_wallet}").json()
-
-# 3. Find the policy for the failed merchant
-policy = next(p for p in policies["active_policies"]
-              if p["merchant_url"] == failed_merchant_url)
-
-# 4. File claim with the policy_id
-claim = httpx.post("http://localhost:8000/claim", json={
-    "policy_id": policy["policy_id"],
-    "http_response": {"status": 503, "body": ""}
-})
-```
-
-### 2. Create Insurance Policy (x402 Payment Required)
-
-**Important:** This endpoint requires a valid x402 payment. Without payment, you'll receive a 402 Payment Required response with payment details.
-
-```bash
-POST /insure
-Headers:
-  X-PAYMENT: <base64-encoded x402 payment>
-  Content-Type: application/json
-
-Body:
-{
-  "merchant_url": "https://api.example.com",
-  "coverage_amount": 10000
-}
-
-Response (with valid payment):
-{
-  "policy_id": "uuid",
-  "agent_address": "0x...",
-  "coverage_amount": 10000,
-  "premium": 1000,
-  "status": "active",
-  "expires_at": "2025-11-07T10:00:00"
-}
-
-Response (without payment):
-{
-  "x402Version": 1,
-  "accepts": [{
-    "network": "base",
-    "maxAmountRequired": "1000000000",
-    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "payTo": "0xba72eD392dB9d67813D68D562D2d67c36fFF566b",
-    ...
-  }],
-  "error": "No X-PAYMENT header provided"
-}
-```
-
-### 2. Submit Fraud Claim
-
-```bash
-POST /claim
-Body:
-{
-  "policy_id": "uuid",
-  "http_response": {
-    "status": 503,
-    "body": "",
-    "headers": {}
-  }
-}
-
-Response:
-{
-  "claim_id": "uuid",
-  "proof": "0xabc...",
-  "public_inputs": [1, 503, 0, 10000],
-  "payout_amount": 10000,
-  "refund_tx_hash": "0x...",
-  "status": "paid",
-  "proof_url": "/proofs/uuid"
-}
-```
-
-### 3. Verify Proof (Public)
-
-```bash
-POST /verify
-Body:
-{
-  "proof": "0xabc...",
-  "public_inputs": [1, 503, 0, 10000]
-}
-
-Response:
-{
-  "valid": true,
-  "fraud_detected": true,
-  "payout_amount": 10000
-}
-```
-
-### 4. Get Proof Data (Public)
-
-```bash
-GET /proofs/<claim_id>
-
-Response:
-{
-  "claim_id": "uuid",
-  "proof": "0xabc...",
-  "public_inputs": [1, 503, 0, 10000],
-  "http_status": 503,
-  "payout_amount": 10000,
-  "refund_tx_hash": "0x...",
-  ...
-}
-```
-
-## Agent Example
-
-```python
-import httpx
-
-# 1. Buy insurance
-policy = httpx.post(
-    "http://localhost:8000/insure",
-    headers={"X-Payment": "token=xyz,amount=100,signature=abc"},
-    json={"merchant_url": "https://api.com", "coverage_amount": 0.01}
-).json()
-
-# 2. Make API call
-response = httpx.get("https://api.com/data")
-
-# 3. If fraud, file claim
-if response.status_code >= 400 or response.text == "":
-    claim = httpx.post(
-        "http://localhost:8000/claim",
-        json={
-            "policy_id": policy["policy_id"],
-            "http_response": {
-                "status": response.status_code,
-                "body": response.text,
-                "headers": dict(response.headers)
-            }
-        }
-    ).json()
-
-    print(f"Refund issued: {claim['refund_tx_hash']}")
-```
-
-## Testing Locally
-
-```bash
-# Test with curl
-curl -X POST http://localhost:8000/insure \
-  -H "X-Payment: token=test,amount=1,signature=test" \
-  -H "Content-Type: application/json" \
-  -d '{"merchant_url": "https://api.com", "coverage_amount": 50}'
-
-# File a test claim
-curl -X POST http://localhost:8000/claim \
-  -H "Content-Type: application/json" \
-  -d '{
-    "policy_id": "POLICY_ID_FROM_ABOVE",
-    "http_response": {
-      "status": 503,
-      "body": "",
-      "headers": {}
-    }
-  }'
-```
-
-## 📚 Documentation
-
-### Quick Start
-- **[README.md](README.md)** (this file) - Overview and quick start
-- **[openapi.yaml](openapi.yaml)** - OpenAPI 3.0 specification
-
-### Core Documentation
-- **[PRODUCTION_READY.md](docs/PRODUCTION_READY.md)** - Current production status
-- **[VERIFICATION_FLOW.md](docs/VERIFICATION_FLOW.md)** - How proof verification works
-  - ✅ Verification happens **OFF-CHAIN** before refunds
-  - ✅ Invalid claims are **REJECTED** (no refund)
-  - ✅ Only verified proofs published on-chain
-
-### Guides
-- **[Deployment Guide](docs/guides/DEPLOYMENT.md)** - Deploy to production
-- **[Production Setup](docs/guides/PRODUCTION_SETUP.md)** - Configuration guide
-- **[Wallet Setup](docs/guides/WALLET_SETUP_GUIDE.md)** - Base Mainnet wallet setup
-
-### Development
-- **[Agent Integration](docs/development/AGENT_DISCOVERY.md)** - x402 Bazaar integration
-- **[Payment Architecture](docs/development/PAYMENT_FLOW_ARCHITECTURE.md)** - Technical details
-- **[Future Improvements](docs/development/FUTURE_IMPROVEMENTS.md)** - Roadmap
-
-📖 **[Full Documentation Index](docs/README.md)**
-
-## Architecture
-
-```
-┌─────────────────┐
-│  x402 Client    │
-│  (Agent)        │
-└────────┬────────┘
-         │ X-PAYMENT header
-         ▼
-┌─────────────────┐
-│ Flask Server    │
-│ (x402 middleware)│
-└──┬───────┬──────┘
-   │       │
-   ▼       ▼
-┌────┐  ┌──────────┐
-│zkEng│ │Blockchain│
-│Nova │ │Base USDC │
-└────┘  └──────────┘
-```
-
-## Technology Stack
-
-- **x402 Protocol** - Decentralized HTTP payments (Coinbase)
-- **zkEngine** - Nova/Spartan zero-knowledge proof system
-- **Base Mainnet** - Ethereum L2 for USDC refunds
-- **Alchemy** - Reliable RPC provider
-- **Flask** - Minimal Python web framework
 
 ## Deployment
 
-Ready to deploy to Render.com:
+### AWS (Primary — Recommended)
 
-1. Push to GitHub
-2. Connect repository to Render
-3. Set environment variables from .env
-4. Deploy!
+**AgentCore** (full service):
+```bash
+agentcore configure -e agentcore_agent.py -r us-east-1
+agentcore deploy
+```
 
-**Cost:** $7-25/month
+**App Runner** (dashboard):
+Deploy using `Dockerfile.dashboard` — auto-deploys from `main` branch.
+
+### Docker Compose
+
+```bash
+# Full stack: service (8080) + dashboard (8000) + PostgreSQL + Redis
+docker-compose up
+
+# Dashboard image only
+docker build -f Dockerfile.dashboard -t x402-dashboard .
+docker run -p 8000:8000 x402-dashboard
+```
+
+### Render (Dashboard Only — Legacy)
+
+`render.yaml` is configured to deploy the dashboard via `dashboard_server.py`.
+Set `AGENTCORE_SERVICE_URL` to point to the AgentCore service.
+
+## API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/insure` | POST | x402 | Create insurance policy |
+| `/claim` | POST | x402 | Submit fraud claim |
+| `/renew` | POST | x402 | Extend policy duration |
+| `/policies?wallet=0x...` | GET | Public | List policies by wallet |
+| `/claims/<id>` | GET | Public | Get claim status |
+| `/proofs/<id>` | GET | Public | Get proof data |
+| `/verify` | POST | Public | Verify a SNARK proof (30/hr) |
+| `/.well-known/agent-card.json` | GET | Public | Agent discovery card |
+| `/api/pricing` | GET | Public | Pricing information |
+| `/api/schema` | GET | Public | OpenAPI 3.0 spec |
+| `/health` | GET | Public | Health check |
+| `/ping` | GET | Public | Liveness probe |
+
+## Configuration
+
+Key environment variables (see `.env.example` for full list):
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `BACKEND_WALLET_PRIVATE_KEY` | Wallet key for USDC refunds | **Yes** |
+| `BACKEND_WALLET_ADDRESS` | Corresponding wallet address | **Yes** |
+| `JOLT_BINARY_PATH` | Path to Jolt Atlas prover binary | **Yes** |
+| `BASE_RPC_URL` | Base chain RPC endpoint | **Yes** |
+| `FACILITATOR_URL` | x402 facilitator endpoint | Yes (default: `https://x402.org/facilitator`) |
+| `AGENTCORE_SERVICE_URL` | AgentCore URL (for dashboard) | No (default: App Runner URL) |
+| `USDC_CONTRACT_ADDRESS` | USDC on Base Mainnet | No (default: `0x833589...`) |
+| `DATABASE_URL` | PostgreSQL URL (omit for JSON files) | No |
+
+## Testing
+
+```bash
+# Unit tests (all should pass)
+pytest tests/unit/ -v
+
+# E2E tests on Base Mainnet (requires funded wallets)
+export AGENT_WALLET_ADDRESS=0x...
+export AGENT_WALLET_PRIVATE_KEY=0x...
+pytest tests/e2e/test_mainnet_e2e.py -v
+```
+
+Tests mock external infrastructure (blockchain RPC, facilitator HTTP API, Jolt Atlas subprocess)
+but exercise all real internal code paths.
 
 ## Security
 
-### Recent Security Enhancements (2025-11-12)
-
-✅ **Claim Authentication** - Optional x402 payment verification for claim submission (enabled by default in production)
-✅ **Configurable Security** - CORS, rate limits, timeouts, and chain IDs now fully configurable
-✅ **Improved Credential Management** - Enhanced .env.example with security warnings and best practices
-✅ **Production Hardening** - Stricter defaults for production deployments
-
-**See**: [docs/SECURITY_IMPROVEMENTS.md](docs/SECURITY_IMPROVEMENTS.md) for detailed security enhancements and configuration guide.
-
-### Security Best Practices
-
-⚠️ **CRITICAL**: Never commit secrets (.env) to git. Use environment variables in deployment.
-⚠️ **IMPORTANT**: If .env was previously committed, remove from git history (see SECURITY_IMPROVEMENTS.md)
-🧪 Use Base Sepolia for development; switch to Mainnet only with proper key management
-🔐 Enable claim authentication in production (`REQUIRE_CLAIM_AUTHENTICATION=true`)
-🌐 Restrict CORS to your domain (`CORS_ORIGINS=https://yourdomain.com`)
-✅ Zero-knowledge proofs (mock/real) to protect merchant privacy
-✅ Public auditability (proof verification endpoint)
-
-## Why This Matters
-
-### The Unsolved Problem
-
-**[GitHub Issue #508](https://github.com/coinbase/x402/issues/508)** (Open since 2024)
-
-Kyle Den Hartog (Brave Security) identified a critical gap:
-> "The agent needs a way to request a chargeback as they paid for a product they didn't receive."
-
-**Current situation:**
-- x402 has NO refund mechanism when merchants fail
-- Agents have NO protection against merchant fraud
-- USDC payments are irreversible
-- Community has been asking for a solution for over a year
-
-**Our solution:** First production implementation of merchant failure insurance for x402
-
-### What Makes This Different
-
-**Insurance (what we built):**
-- Agent pays premium to us → We pay refund from our reserves
-- Merchant keeps their original payment
-- We absorb the financial loss
-
-**vs. Chargebacks (what doesn't exist):**
-- Would reverse merchant's payment directly
-- Merchant loses what they received
-- Requires protocol-level support (x402 doesn't have this)
-
-**Why this matters:** We provide the OUTCOME of chargebacks (agent gets money back) through an insurance mechanism. Same result for agents, different mechanics.
-
-### Real-World Impact
-
-**Recent incidents:**
-- October 2025: 402Bridge security breach (USDC disappeared)
-- GitHub Issue #545: Python middleware producing 500 errors
-- Twitter reports: "x402 protocol API experiencing frequent lags"
-
-**Without insurance:**
-- Agent loses 0.01-0.1 USDC per failed API call → funds gone forever
-- No recourse, no dispute, no refund
-- Add up over many calls = significant losses
-
-**With our insurance:**
-- Agent pays 1% premium for protection (e.g., 0.0001 USDC to protect 0.01 USDC)
-- If merchant fails: Agent files claim → zkEngine proof → automatic refund in 30 seconds
-- Cryptographic proof of fraud → no disputes, no manual review
-- Public auditability → anyone can verify we're legitimate
-- Only 1% overhead for complete protection
-
-### Differentiation
-
-**vs. x402-secure (t54.ai):**
-- **They do:** Pre-transaction risk assessment (prevention)
-  - Analyze AI agent context, prompts, model details
-  - Assign risk scores (low/medium/high)
-  - Prevent fraud before it happens
-- **We do:** Post-transaction protection (recovery)
-  - Pay refunds when merchant actually fails
-  - Prove fraud with zero-knowledge proofs
-  - Recover lost funds
-- **Relationship:** Complementary, not competitive - use both for maximum protection!
-
-**vs. Traditional insurance:**
-- ✅ Instant settlement (30s vs 30 days)
-- ✅ No human review required (math proves fraud)
-- ✅ Public verifiability (anyone can audit claims)
-- ✅ Privacy-preserving (zkp hides sensitive data)
-- ✅ Trustless (future: fully on-chain automation)
+- **Claim authentication** always required (x402 payment)
+- **Payment verification** via x402.org facilitator (signature, nonce, amount)
+- **Server-side fraud detection** via independent merchant URL re-fetch
+- **Nonce replay prevention** via database-backed nonce storage
+- **Real blockchain refunds** — no mock fallbacks
+- **Real SNARK proofs** — Jolt Atlas binary required, no mock mode
+- **Atomic database operations** — `claim_policy()` prevents double-claiming
 
 ## Support
 
-**Wallet:** 0xa4d01549F1460142FAF735e6B18600949C5764a9
+**Wallet:** 0x0e9AFe2499211c3E35e570968d1047Fcf7488c60
 **Network:** Base Mainnet (Chain ID: 8453)
-**Block Explorer:** https://basescan.org
-
-**Documentation:**
-- Full positioning: See `POSITIONING.md` for market analysis
-- GitHub Issue: https://github.com/coinbase/x402/issues/508

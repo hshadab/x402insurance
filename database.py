@@ -7,6 +7,7 @@ Set DATABASE_URL environment variable to use PostgreSQL.
 import os
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Dict, Optional, List
 from datetime import datetime, timezone
@@ -31,6 +32,12 @@ class DatabaseClient:
     def __init__(self, database_url: Optional[str] = None, data_dir: Path = Path("data")):
         self.database_url = database_url or os.getenv("DATABASE_URL")
 
+        if not self.database_url and os.getenv("ENV") == "production":
+            logger.warning(
+                "No DATABASE_URL configured in production — using JSON file storage. "
+                "This is not recommended for production workloads."
+            )
+
         if self.database_url and HAS_POSTGRES:
             logger.info("Using PostgreSQL database")
             self.backend = PostgreSQLBackend(self.database_url)
@@ -51,8 +58,12 @@ class DatabaseClient:
     def get_policies_by_wallet(self, wallet_address: str) -> List[Dict]:
         return self.backend.get_policies_by_wallet(wallet_address)
 
-    def get_all_policies(self) -> Dict[str, Dict]:
-        return self.backend.get_all_policies()
+    def get_all_policies(self, limit: int = 0, offset: int = 0) -> Dict[str, Dict]:
+        return self.backend.get_all_policies(limit=limit, offset=offset)
+
+    def claim_policy(self, policy_id: str) -> Optional[Dict]:
+        """Atomically mark a policy as claimed. Returns policy dict on success, None on failure."""
+        return self.backend.claim_policy(policy_id)
 
     # Claim operations
     def create_claim(self, claim_id: str, claim_data: Dict) -> bool:
@@ -64,8 +75,21 @@ class DatabaseClient:
     def update_claim(self, claim_id: str, updates: Dict) -> bool:
         return self.backend.update_claim(claim_id, updates)
 
-    def get_all_claims(self) -> Dict[str, Dict]:
-        return self.backend.get_all_claims()
+    def get_all_claims(self, limit: int = 0, offset: int = 0) -> Dict[str, Dict]:
+        return self.backend.get_all_claims(limit=limit, offset=offset)
+
+    def get_claim_by_idempotency_key(self, key: str) -> Optional[Dict]:
+        return self.backend.get_claim_by_idempotency_key(key)
+
+    # Nonce operations
+    def is_nonce_used(self, payer: str, nonce: str) -> bool:
+        return self.backend.is_nonce_used(payer, nonce)
+
+    def mark_nonce_used(self, payer: str, nonce: str, timestamp: int) -> None:
+        self.backend.mark_nonce_used(payer, nonce, timestamp)
+
+    def cleanup_nonces(self, max_age_seconds: int = 3600) -> int:
+        return self.backend.cleanup_nonces(max_age_seconds)
 
     # Cleanup
     def cleanup_expired_policies(self) -> int:
@@ -80,6 +104,30 @@ class JSONFileBackend:
         self.data_dir.mkdir(exist_ok=True)
         self.policies_file = self.data_dir / "policies.json"
         self.claims_file = self.data_dir / "claims.json"
+        self.nonces_file = self.data_dir / "nonce_cache.json"
+
+        # Try to import fcntl for file locking
+        try:
+            import fcntl
+            self._fcntl = fcntl
+        except ImportError:
+            self._fcntl = None
+            logger.debug("fcntl not available (Windows?), skipping file locking")
+
+    def _acquire_lock(self, file_path: Path):
+        """Acquire exclusive lock on file. Returns (lock_fd, lock_file) or (None, None)."""
+        if not self._fcntl:
+            return None, None
+        lock_file = file_path.with_suffix(file_path.suffix + ".lock")
+        lock_file.touch(exist_ok=True)
+        lock_fd = open(lock_file, 'r+')
+        self._fcntl.flock(lock_fd, self._fcntl.LOCK_EX)
+        return lock_fd, lock_file
+
+    def _release_lock(self, lock_fd):
+        if lock_fd and self._fcntl:
+            self._fcntl.flock(lock_fd, self._fcntl.LOCK_UN)
+            lock_fd.close()
 
     def _atomic_write(self, path: Path, content: str):
         """Atomic file write"""
@@ -96,11 +144,11 @@ class JSONFileBackend:
             return {}
         try:
             with open(file_path, 'r') as f:
-                try:
-                    import fcntl
-                    fcntl.flock(f, fcntl.LOCK_SH)
-                except Exception:
-                    pass
+                if self._fcntl:
+                    try:
+                        self._fcntl.flock(f, self._fcntl.LOCK_SH)
+                    except OSError:
+                        pass
                 return json.load(f)
         except json.JSONDecodeError:
             logger.error("Corrupted JSON in %s; returning empty dict", file_path)
@@ -110,47 +158,27 @@ class JSONFileBackend:
         """Save JSON atomically with proper file locking"""
         content = json.dumps(data, indent=2, default=str)
 
-        # Try to use file locking (Unix/Linux only)
+        lock_fd = None
         try:
-            import fcntl
-            has_fcntl = True
-        except ImportError:
-            has_fcntl = False
-            logger.debug("fcntl not available (Windows?), skipping file locking")
-
-        if has_fcntl:
-            # Acquire lock, write atomically, then release
-            lock_file = file_path.with_suffix(file_path.suffix + ".lock")
-            try:
-                # Create lock file if it doesn't exist
-                lock_file.touch(exist_ok=True)
-
-                with open(lock_file, 'r+') as lock_fd:
-                    # Acquire exclusive lock (blocks until available)
-                    fcntl.flock(lock_fd, fcntl.LOCK_EX)
-                    try:
-                        # Perform atomic write while lock is held
-                        self._atomic_write(file_path, content)
-                    finally:
-                        # Release lock
-                        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-            except Exception as e:
-                logger.exception("Failed to save %s with locking: %s", file_path, e)
-                raise
-        else:
-            # No locking available (Windows), just do atomic write
-            try:
-                self._atomic_write(file_path, content)
-            except Exception as e:
-                logger.exception("Failed to save %s: %s", file_path, e)
-                raise
+            lock_fd, _ = self._acquire_lock(file_path)
+            self._atomic_write(file_path, content)
+        except Exception as e:
+            logger.exception("Failed to save %s: %s", file_path, e)
+            raise
+        finally:
+            self._release_lock(lock_fd)
 
     # Policy operations
     def create_policy(self, policy_id: str, policy_data: Dict) -> bool:
         try:
-            policies = self._load_json(self.policies_file)
-            policies[policy_id] = policy_data
-            self._save_json(self.policies_file, policies)
+            lock_fd = None
+            try:
+                lock_fd, _ = self._acquire_lock(self.policies_file)
+                policies = self._load_json(self.policies_file)
+                policies[policy_id] = policy_data
+                self._atomic_write(self.policies_file, json.dumps(policies, indent=2, default=str))
+            finally:
+                self._release_lock(lock_fd)
             return True
         except Exception as e:
             logger.exception("Failed to create policy: %s", e)
@@ -162,15 +190,52 @@ class JSONFileBackend:
 
     def update_policy(self, policy_id: str, updates: Dict) -> bool:
         try:
-            policies = self._load_json(self.policies_file)
-            if policy_id not in policies:
-                return False
-            policies[policy_id].update(updates)
-            self._save_json(self.policies_file, policies)
+            lock_fd = None
+            try:
+                lock_fd, _ = self._acquire_lock(self.policies_file)
+                policies = self._load_json(self.policies_file)
+                if policy_id not in policies:
+                    return False
+                policies[policy_id].update(updates)
+                self._atomic_write(self.policies_file, json.dumps(policies, indent=2, default=str))
+            finally:
+                self._release_lock(lock_fd)
             return True
         except Exception as e:
             logger.exception("Failed to update policy: %s", e)
             return False
+
+    def claim_policy(self, policy_id: str) -> Optional[Dict]:
+        """Atomically mark policy as claimed if it's active and not expired."""
+        lock_fd = None
+        try:
+            lock_fd, _ = self._acquire_lock(self.policies_file)
+            policies = self._load_json(self.policies_file)
+            policy = policies.get(policy_id)
+            if not policy:
+                return None
+            if policy.get('status') != 'active':
+                return None
+            # Check expiry
+            try:
+                expires_at_str = policy.get('expires_at', '')
+                expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at < datetime.now(timezone.utc):
+                    return None
+            except (ValueError, TypeError):
+                return None
+
+            policy['status'] = 'claimed'
+            policies[policy_id] = policy
+            self._atomic_write(self.policies_file, json.dumps(policies, indent=2, default=str))
+            return policy
+        except Exception as e:
+            logger.exception("Failed to claim policy: %s", e)
+            return None
+        finally:
+            self._release_lock(lock_fd)
 
     def get_policies_by_wallet(self, wallet_address: str) -> List[Dict]:
         policies = self._load_json(self.policies_file)
@@ -181,15 +246,25 @@ class JSONFileBackend:
             if policy.get('agent_address', '').lower() == wallet_lower
         ]
 
-    def get_all_policies(self) -> Dict[str, Dict]:
-        return self._load_json(self.policies_file)
+    def get_all_policies(self, limit: int = 0, offset: int = 0) -> Dict[str, Dict]:
+        policies = self._load_json(self.policies_file)
+        if limit > 0:
+            items = list(policies.items())
+            items = items[offset:offset + limit]
+            return dict(items)
+        return policies
 
     # Claim operations
     def create_claim(self, claim_id: str, claim_data: Dict) -> bool:
         try:
-            claims = self._load_json(self.claims_file)
-            claims[claim_id] = claim_data
-            self._save_json(self.claims_file, claims)
+            lock_fd = None
+            try:
+                lock_fd, _ = self._acquire_lock(self.claims_file)
+                claims = self._load_json(self.claims_file)
+                claims[claim_id] = claim_data
+                self._atomic_write(self.claims_file, json.dumps(claims, indent=2, default=str))
+            finally:
+                self._release_lock(lock_fd)
             return True
         except Exception as e:
             logger.exception("Failed to create claim: %s", e)
@@ -201,50 +276,103 @@ class JSONFileBackend:
 
     def update_claim(self, claim_id: str, updates: Dict) -> bool:
         try:
-            claims = self._load_json(self.claims_file)
-            if claim_id not in claims:
-                return False
-            claims[claim_id].update(updates)
-            self._save_json(self.claims_file, claims)
+            lock_fd = None
+            try:
+                lock_fd, _ = self._acquire_lock(self.claims_file)
+                claims = self._load_json(self.claims_file)
+                if claim_id not in claims:
+                    return False
+                claims[claim_id].update(updates)
+                self._atomic_write(self.claims_file, json.dumps(claims, indent=2, default=str))
+            finally:
+                self._release_lock(lock_fd)
             return True
         except Exception as e:
             logger.exception("Failed to update claim: %s", e)
             return False
 
-    def get_all_claims(self) -> Dict[str, Dict]:
-        return self._load_json(self.claims_file)
+    def get_all_claims(self, limit: int = 0, offset: int = 0) -> Dict[str, Dict]:
+        claims = self._load_json(self.claims_file)
+        if limit > 0:
+            items = list(claims.items())
+            items = items[offset:offset + limit]
+            return dict(items)
+        return claims
+
+    def get_claim_by_idempotency_key(self, key: str) -> Optional[Dict]:
+        claims = self._load_json(self.claims_file)
+        for cid, claim in claims.items():
+            if claim.get('idempotency_key') == key:
+                return {**claim, 'claim_id': claim.get('claim_id', cid)}
+        return None
+
+    # Nonce operations
+    def is_nonce_used(self, payer: str, nonce: str) -> bool:
+        key = f"{payer.lower()}:{nonce}"
+        cache = self._load_json(self.nonces_file)
+        return key in cache
+
+    def mark_nonce_used(self, payer: str, nonce: str, timestamp: int) -> None:
+        lock_fd = None
+        try:
+            lock_fd, _ = self._acquire_lock(self.nonces_file)
+            cache = self._load_json(self.nonces_file)
+            key = f"{payer.lower()}:{nonce}"
+            cache[key] = timestamp
+            self._atomic_write(self.nonces_file, json.dumps(cache, indent=2, default=str))
+        finally:
+            self._release_lock(lock_fd)
+
+    def cleanup_nonces(self, max_age_seconds: int = 3600) -> int:
+        lock_fd = None
+        try:
+            lock_fd, _ = self._acquire_lock(self.nonces_file)
+            cache = self._load_json(self.nonces_file)
+            cutoff = int(time.time()) - max_age_seconds
+            old = [k for k, v in cache.items() if v < cutoff]
+            for k in old:
+                del cache[k]
+            if old:
+                self._atomic_write(self.nonces_file, json.dumps(cache, indent=2, default=str))
+            return len(old)
+        finally:
+            self._release_lock(lock_fd)
 
     def cleanup_expired_policies(self) -> int:
-        """Remove expired policies"""
+        """Archive expired policies (soft-delete)"""
+        lock_fd = None
         try:
+            lock_fd, _ = self._acquire_lock(self.policies_file)
             policies = self._load_json(self.policies_file)
             current_time = datetime.now(timezone.utc)
 
             expired_count = 0
-            active_policies = {}
 
             for pid, policy in policies.items():
                 try:
+                    if policy.get('status') != 'active':
+                        continue
                     expires_at_str = policy.get('expires_at', '')
                     expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
                     if expires_at.tzinfo is None:
                         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-                    if expires_at > current_time and policy.get('status') == 'active':
-                        active_policies[pid] = policy
-                    else:
+                    if expires_at <= current_time:
+                        policy['status'] = 'archived'
                         expired_count += 1
-                except Exception:
-                    # Keep policy if we can't parse expiration
-                    active_policies[pid] = policy
+                except (ValueError, TypeError):
+                    pass
 
-            self._save_json(self.policies_file, active_policies)
-            logger.info("Cleaned up %d expired policies", expired_count)
+            if expired_count > 0:
+                self._atomic_write(self.policies_file, json.dumps(policies, indent=2, default=str))
+            logger.info("Archived %d expired policies", expired_count)
             return expired_count
 
         except Exception as e:
-            logger.exception("Failed to cleanup expired policies: %s", e)
+            logger.exception("Failed to archive expired policies: %s", e)
             return 0
+        finally:
+            self._release_lock(lock_fd)
 
 
 class PostgreSQLBackend:
@@ -319,13 +447,29 @@ class PostgreSQLBackend:
                         status VARCHAR(20) NOT NULL,
                         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
                         paid_at TIMESTAMP WITH TIME ZONE,
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        idempotency_key VARCHAR(255),
+                        server_verified BOOLEAN,
+                        server_http_status INTEGER,
+                        merchant_url TEXT
                     )
                 """)
 
                 cur.execute("""
                     CREATE INDEX IF NOT EXISTS idx_claims_policy
                     ON claims(policy_id)
+                """)
+                cur.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_idempotency_key
+                    ON claims(idempotency_key) WHERE idempotency_key IS NOT NULL
+                """)
+
+                # Nonces table
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS nonces (
+                        nonce_key VARCHAR(255) PRIMARY KEY,
+                        created_at INTEGER NOT NULL
+                    )
                 """)
 
         logger.info("Database tables created/verified")
@@ -396,11 +540,27 @@ class PostgreSQLBackend:
                     )
             return True
         except ValueError:
-            # Re-raise validation errors
             raise
         except Exception as e:
             logger.exception("Failed to update policy: %s", e)
             return False
+
+    def claim_policy(self, policy_id: str) -> Optional[Dict]:
+        """Atomically mark policy as claimed if active and not expired. Returns policy or None."""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("""
+                        UPDATE policies
+                        SET status = 'claimed', updated_at = NOW()
+                        WHERE policy_id = %s AND status = 'active' AND expires_at > NOW()
+                        RETURNING *
+                    """, (policy_id,))
+                    row = cur.fetchone()
+                    return dict(row) if row else None
+        except Exception as e:
+            logger.exception("Failed to claim policy: %s", e)
+            return None
 
     def get_policies_by_wallet(self, wallet_address: str) -> List[Dict]:
         with self.get_connection() as conn:
@@ -411,10 +571,13 @@ class PostgreSQLBackend:
                 )
                 return [dict(row) for row in cur.fetchall()]
 
-    def get_all_policies(self) -> Dict[str, Dict]:
+    def get_all_policies(self, limit: int = 0, offset: int = 0) -> Dict[str, Dict]:
         with self.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("SELECT * FROM policies")
+                if limit > 0:
+                    cur.execute("SELECT * FROM policies ORDER BY created_at DESC LIMIT %s OFFSET %s", (limit, offset))
+                else:
+                    cur.execute("SELECT * FROM policies")
                 return {row['policy_id']: dict(row) for row in cur.fetchall()}
 
     # Claim operations
@@ -429,13 +592,14 @@ class PostgreSQLBackend:
                             http_status, http_body_hash, http_headers,
                             payout_amount, payout_amount_units,
                             refund_tx_hash, recipient_address,
-                            status, created_at, paid_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            status, created_at, paid_at,
+                            idempotency_key, server_verified, server_http_status, merchant_url
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         claim_id,
                         claim_data['policy_id'],
-                        claim_data['proof'],
-                        json.dumps(claim_data['public_inputs']),
+                        claim_data.get('proof'),
+                        json.dumps(claim_data.get('public_inputs')),
                         claim_data.get('proof_generation_time_ms'),
                         claim_data.get('verification_result'),
                         claim_data.get('http_status'),
@@ -447,7 +611,11 @@ class PostgreSQLBackend:
                         claim_data.get('recipient_address'),
                         claim_data['status'],
                         claim_data['created_at'],
-                        claim_data.get('paid_at')
+                        claim_data.get('paid_at'),
+                        claim_data.get('idempotency_key'),
+                        claim_data.get('server_verified'),
+                        claim_data.get('server_http_status'),
+                        claim_data.get('merchant_url'),
                     ))
             return True
         except Exception as e:
@@ -466,7 +634,8 @@ class PostgreSQLBackend:
         'status', 'proof', 'public_inputs', 'proof_generation_time_ms',
         'verification_result', 'http_status', 'http_body_hash', 'http_headers',
         'payout_amount', 'payout_amount_units', 'refund_tx_hash',
-        'recipient_address', 'paid_at', 'error', 'failed_at'
+        'recipient_address', 'paid_at', 'error', 'failed_at',
+        'server_verified', 'server_http_status', 'merchant_url', 'idempotency_key'
     }
 
     def update_claim(self, claim_id: str, updates: Dict) -> bool:
@@ -492,30 +661,75 @@ class PostgreSQLBackend:
                     )
             return True
         except ValueError:
-            # Re-raise validation errors
             raise
         except Exception as e:
             logger.exception("Failed to update claim: %s", e)
             return False
 
-    def get_all_claims(self) -> Dict[str, Dict]:
+    def get_all_claims(self, limit: int = 0, offset: int = 0) -> Dict[str, Dict]:
         with self.get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("SELECT * FROM claims")
+                if limit > 0:
+                    cur.execute("SELECT * FROM claims ORDER BY created_at DESC LIMIT %s OFFSET %s", (limit, offset))
+                else:
+                    cur.execute("SELECT * FROM claims")
                 return {row['claim_id']: dict(row) for row in cur.fetchall()}
 
+    def get_claim_by_idempotency_key(self, key: str) -> Optional[Dict]:
+        with self.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM claims WHERE idempotency_key = %s LIMIT 1", (key,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+
+    # Nonce operations
+    def is_nonce_used(self, payer: str, nonce: str) -> bool:
+        key = f"{payer.lower()}:{nonce}"
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1 FROM nonces WHERE nonce_key = %s", (key,))
+                    return cur.fetchone() is not None
+        except Exception as e:
+            logger.exception("Failed to check nonce: %s", e)
+            return False
+
+    def mark_nonce_used(self, payer: str, nonce: str, timestamp: int) -> None:
+        key = f"{payer.lower()}:{nonce}"
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO nonces (nonce_key, created_at) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                        (key, timestamp)
+                    )
+        except Exception as e:
+            logger.exception("Failed to mark nonce: %s", e)
+
+    def cleanup_nonces(self, max_age_seconds: int = 3600) -> int:
+        cutoff = int(time.time()) - max_age_seconds
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM nonces WHERE created_at < %s", (cutoff,))
+                    return cur.rowcount
+        except Exception as e:
+            logger.exception("Failed to cleanup nonces: %s", e)
+            return 0
+
     def cleanup_expired_policies(self) -> int:
-        """Archive expired policies"""
+        """Archive expired policies (soft-delete)"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        DELETE FROM policies
+                        UPDATE policies
+                        SET status = 'archived', updated_at = NOW()
                         WHERE expires_at < NOW() AND status = 'active'
                     """)
                     count = cur.rowcount
-            logger.info("Cleaned up %d expired policies", count)
+            logger.info("Archived %d expired policies", count)
             return count
         except Exception as e:
-            logger.exception("Failed to cleanup expired policies: %s", e)
+            logger.exception("Failed to archive expired policies: %s", e)
             return 0

@@ -11,7 +11,7 @@ This document details 5 major improvements to make x402 Insurance easier for age
 
 ### Problem
 Agents must wait 15-30 seconds synchronously for claim processing:
-- 10-20s for zkEngine proof generation (blocking)
+- 10-20s for Jolt Atlas proof generation (blocking)
 - 2-5s for blockchain refund transaction
 - Timeout risk if network is slow
 - No way to recover if connection drops mid-processing
@@ -35,7 +35,7 @@ Agent Request → API Server → Job Queue → Background Worker
   immediately    (status: processing)
                       ↓
                  Background worker:
-                 1. Generate zkEngine proof
+                 1. Generate Jolt Atlas proof
                  2. Issue blockchain refund
                  3. Update claim status → "paid"
 ```
@@ -133,14 +133,14 @@ def process_claim_async(claim_id):
         policy = policies[claim['policy_id']]
 
         # Generate proof (10-20s)
-        proof_hex, public_inputs, gen_time_ms = zkengine.generate_proof(
+        proof_hex, public_inputs, gen_time_ms = jolt_atlas.generate_proof(
             http_status=claim['http_response']['status'],
             http_body=claim['http_response']['body'],
             http_headers=claim['http_response'].get('headers', {})
         )
 
         # Verify proof
-        is_valid = zkengine.verify_proof(proof_hex, public_inputs)
+        is_valid = jolt_atlas.verify_proof(proof_hex, public_inputs)
         if not is_valid:
             raise Exception("Proof verification failed")
 
@@ -283,9 +283,9 @@ import asyncio
 import httpx
 
 class MerchantMonitor:
-    def __init__(self, database, zkengine, blockchain):
+    def __init__(self, database, jolt_atlas, blockchain):
         self.database = database
-        self.zkengine = zkengine
+        self.jolt_atlas = jolt_atlas
         self.blockchain = blockchain
         self.watchers = {}
 

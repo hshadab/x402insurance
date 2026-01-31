@@ -1,1402 +1,768 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>x402 Insurance - Verifiable Refund Claims for AI Agents</title>
-    <link href="https://cdn.prod.website-files.com/65d52b07d5bc41614daa723f/65d531e913836948aa73b883_favicon-novanet.png" rel="shortcut icon" type="image/x-icon"/>
-    <link href="https://cdn.prod.website-files.com/65d52b07d5bc41614daa723f/65d532295a03f1655fefe1ff_webclip-novanet.png" rel="apple-touch-icon"/>
+    <title>NovNet x402 Insurance — Service Dashboard (Read-Only)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e1;</text></svg>"/>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --bg-primary: #0B0E1C;
-            --bg-secondary: #1A1F3A;
-            --accent-primary: #00D4FF;
-            --accent-secondary: #C0D4E0;
-            --accent-warning: #FFB800;
-            --accent-danger: #FF4757;
-            --text-primary: #FFFFFF;
-            --text-secondary: #B8BCC8;
-            --panel-bg: rgba(26, 31, 58, 0.95);
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-            overflow-x: hidden;
-            position: relative;
-            min-height: 100vh;
-            color: var(--text-primary);
-        }
-
-        /* Animated background particles */
-        .bg-animation { position: fixed; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
-        .particle { position: absolute; width: 4px; height: 4px; background: rgba(0, 212, 255, 0.3); border-radius: 50%; animation: float 20s infinite linear; }
-
-        @keyframes float {
-            from { transform: translateY(100vh) translateX(0); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            to { transform: translateY(-100vh) translateX(100px); opacity: 0; }
-        }
-
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Header */
-        .header {
-            position: fixed; top: 0; left: 0; right: 0;
-            background: var(--panel-bg); backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-            padding: 15px 30px; z-index: 1000;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-
-        .logo {
-            display: flex; align-items: center; gap: 10px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .logo img {
-            height: 32px;
-            width: auto;
-        }
-
-        .nav-buttons { display: flex; gap: 10px; align-items: center; }
-        .nav-btn {
-            padding: 8px 16px;
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 8px;
-            color: var(--accent-primary);
-            cursor: pointer; transition: all 0.3s ease; font-size: 13px;
-        }
-        .nav-btn:hover { background: rgba(0, 212, 255, 0.2); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3); }
-
-        /* Hero section */
-        .hero {
-            position: relative;
-            z-index: 1;
-            padding: 120px 30px 60px;
-            max-width: 1200px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        .hero-title {
-            font-size: 72px;
-            font-weight: 900;
-            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 20px;
-            line-height: 1.1;
-        }
-
-        .hero-subtitle {
-            font-size: 28px;
-            color: var(--text-secondary);
-            margin-bottom: 40px;
-            font-weight: 300;
-        }
-
-        .hero-description {
-            font-size: 18px;
-            color: var(--text-secondary);
-            max-width: 800px;
-            margin: 0 auto 40px;
-            line-height: 1.6;
-        }
-
-        .hero-badges {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 50px;
-        }
-
-        .badge {
-            padding: 10px 20px;
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 20px;
-            font-size: 14px;
-            color: var(--accent-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Main content */
-        .main-content {
-            position: relative;
-            z-index: 1;
-            padding: 0 30px 30px;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-
-        /* Grid layout */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        /* Card */
-        .card {
-            background: var(--panel-bg); backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 16px;
-            padding: 25px;
-            transition: all 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
-            border-color: var(--accent-primary);
-        }
-
-        .card-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: var(--accent-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .card-value {
-            font-size: 36px;
-            font-weight: bold;
-            color: var(--text-primary);
-            margin-bottom: 10px;
-        }
-
-        .card-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-        .status-badge.live { background: rgba(0,255,0,0.2); color: #00FF00; }
-        .status-badge.pending { background: rgba(255,184,0,0.2); color: #FFB800; }
-        .status-badge.paid { background: rgba(0,212,255,0.2); color: #00D4FF; }
-
-        /* Sample data badge */
-        .sample-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            margin-left: 8px;
-            background: rgba(255, 184, 0, 0.15);
-            border: 1px solid rgba(255, 184, 0, 0.4);
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--accent-warning);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* List item */
-        .list-item {
-            padding: 15px;
-            background: rgba(0, 212, 255, 0.05);
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 3px solid var(--accent-secondary);
-            transition: all 0.2s ease;
-        }
-        .list-item:hover {
-            background: rgba(0, 212, 255, 0.1);
-            transform: translateX(5px);
-        }
-
-        .list-item-title {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 5px;
-        }
-
-        .list-item-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        /* Proof verification */
-        .proof-verifier {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .proof-input {
-            width: 100%;
-            padding: 12px;
-            background: rgba(0, 212, 255, 0.05);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            margin-bottom: 10px;
-        }
-
-        .proof-input:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-            background: rgba(0, 212, 255, 0.1);
-        }
-
-        .verify-btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--accent-primary);
-            color: var(--bg-primary);
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .verify-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
-        }
-
-        .proof-result {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            display: none;
-        }
-        .proof-result.success {
-            background: rgba(0, 255, 0, 0.1);
-            border: 1px solid rgba(0, 255, 0, 0.3);
-            color: #00FF00;
-        }
-        /* Timeline View Styles */
-        .timeline-item {
-            background: rgba(26, 31, 58, 0.6);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .timeline-item:hover {
-            border-color: rgba(0, 212, 255, 0.5);
-            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .timeline-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .timeline-merchant {
-            font-size: 12px;
-            color: var(--accent-secondary);
-            font-family: 'Courier New', monospace;
-            margin-left: 28px;
-        }
-
-        .timeline-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .timeline-status.active {
-            background: rgba(0, 255, 0, 0.15);
-            border: 1px solid rgba(0, 255, 0, 0.4);
-            color: #00FF88;
-        }
-
-        .timeline-status.claimed {
-            background: rgba(255, 71, 87, 0.15);
-            border: 1px solid rgba(255, 71, 87, 0.4);
-            color: #FF4757;
-        }
-
-        .timeline-status.expired {
-            background: rgba(184, 188, 200, 0.15);
-            border: 1px solid rgba(184, 188, 200, 0.4);
-            color: var(--text-secondary);
-        }
-
-        /* Timeline Progress Bar */
-        .timeline-progress-section {
-            margin: 20px 0;
-            padding: 15px 0;
-            border-top: 1px solid rgba(0, 212, 255, 0.1);
-            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
-        }
-
-        .timeline-stages {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .timeline-stage {
-            text-align: center;
-            flex: 1;
-        }
-
-        .timeline-stage-label {
-            margin-top: 5px;
-            font-size: 10px;
-        }
-
-        .timeline-bar-container {
-            position: relative;
-            height: 8px;
-            background: rgba(0, 212, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .timeline-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-            border-radius: 10px;
-            transition: width 0.5s ease;
-            position: relative;
-        }
-
-        .timeline-bar-fill::after {
-            content: '';
-            position: absolute;
-            right: -2px;
-            top: -4px;
-            width: 16px;
-            height: 16px;
-            background: var(--accent-primary);
-            border: 3px solid var(--bg-secondary);
-            border-radius: 50%;
-            box-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
-        }
-
-        .timeline-time-remaining {
-            font-size: 12px;
-            color: var(--accent-primary);
-            font-weight: 600;
-            margin-top: 8px;
-        }
-
-        .timeline-time-remaining.warning {
-            color: var(--accent-warning);
-            animation: pulse 2s infinite;
-        }
-
-        .timeline-time-remaining.expired {
-            color: var(--accent-danger);
-        }
-
-        /* Timeline Details Grid */
-        .timeline-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .timeline-detail-item {
-            background: rgba(0, 212, 255, 0.05);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 212, 255, 0.1);
-        }
-
-        .timeline-detail-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .timeline-detail-value {
-            font-size: 14px;
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        /* Claim Timeline (for claimed policies) */
-        .claim-timeline {
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            border-left: 3px solid var(--accent-danger);
-        }
-
-        .claim-timeline-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .claim-timeline-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .claim-step {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .claim-step-icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .claim-step-time {
-            color: var(--accent-secondary);
-            font-family: 'Courier New', monospace;
-            min-width: 60px;
-        }
-
-        .timeline-actions {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .timeline-btn {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: none;
-        }
-
-        .timeline-btn-primary {
-            background: var(--accent-primary);
-            color: var(--bg-primary);
-        }
-
-        .timeline-btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
-        }
-
-        .timeline-btn-secondary {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            color: var(--accent-primary);
-        }
-
-        .timeline-btn-secondary:hover {
-            background: rgba(0, 212, 255, 0.2);
-        }
-
-        .proof-result.error {
-            background: rgba(255, 71, 87, 0.1);
-            border: 1px solid rgba(255, 71, 87, 0.3);
-            color: #FF4757;
-        }
-
-        /* Code block */
-        .code-block {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            color: var(--accent-secondary);
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        /* Stats grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .stat-box {
-            text-align: center;
-            padding: 15px;
-            background: rgba(0, 212, 255, 0.05);
-            border-radius: 8px;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--accent-primary);
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-top: 5px;
-        }
-
-        /* Loader */
-        .loader {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(0, 212, 255, 0.1);
-            border-top-color: var(--accent-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-            opacity: 0.3;
-        }
-
-        /* Status indicator */
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        .status-indicator.green {
-            background: #00FF00;
-            animation: pulse 2s infinite;
-        }
-        .status-indicator.yellow {
-            background: #FFB800;
-            animation: pulse 2s infinite;
-        }
-
-        /* Expandable verification section */
-        .verification-section {
-            margin-top: 12px;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-
-        .verification-section.expanded {
-            max-height: 800px;
-        }
-
-        .verification-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 6px;
-            color: var(--accent-primary);
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .verification-toggle:hover {
-            background: rgba(0, 212, 255, 0.2);
-            border-color: var(--accent-primary);
-        }
-
-        .verification-toggle svg {
-            transition: transform 0.3s ease;
-        }
-
-        .verification-toggle.expanded svg {
-            transform: rotate(90deg);
-        }
-
-        .verification-content {
-            margin-top: 12px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 8px;
-        }
-
-        .verification-field {
-            margin-bottom: 15px;
-        }
-
-        .verification-field:last-child {
-            margin-bottom: 0;
-        }
-
-        .verification-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--accent-primary);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .verification-value {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 212, 255, 0.05);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            border-radius: 6px;
-            padding: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            color: var(--text-secondary);
-            word-break: break-all;
-        }
-
-        .copy-btn {
-            flex-shrink: 0;
-            padding: 4px 8px;
-            background: rgba(0, 212, 255, 0.2);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 4px;
-            color: var(--accent-primary);
-            font-size: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .copy-btn:hover {
-            background: rgba(0, 212, 255, 0.3);
-            border-color: var(--accent-primary);
-        }
-
-        .copy-btn.copied {
-            background: rgba(0, 255, 0, 0.2);
-            border-color: rgba(0, 255, 0, 0.5);
-            color: #00FF00;
-        }
-
-        .public-inputs-decoded {
-            margin-top: 8px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-left: 3px solid var(--accent-primary);
-            border-radius: 4px;
-            font-size: 11px;
-            line-height: 1.6;
-        }
-
-        .public-inputs-decoded div {
-            margin-bottom: 4px;
-        }
-
-        .verify-independently-btn {
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, var(--accent-primary) 0%, rgba(0, 212, 255, 0.7) 100%);
-            color: var(--bg-primary);
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 12px;
-        }
-
-        .verify-independently-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero { padding: 100px 20px 40px; }
-            .hero-title { font-size: 42px; }
-            .hero-subtitle { font-size: 20px; }
-            .hero-description { font-size: 16px; }
-            .main-content { padding: 0 15px 15px; }
-            .dashboard-grid { grid-template-columns: 1fr; }
-            .card-value { font-size: 28px; }
-            .nav-buttons { gap: 5px; }
-            .nav-btn { padding: 6px 12px; font-size: 12px; }
-        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        :root{
+            --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a2e;
+            --card:#ffffff08;--card-border:#ffffff12;--card-hover:#ffffff15;
+            --blue:#3b82f6;--blue-dim:#3b82f640;
+            --green:#10b981;--green-dim:#10b98130;
+            --red:#ef4444;--red-dim:#ef444430;
+            --yellow:#f59e0b;--yellow-dim:#f59e0b30;
+            --purple:#a78bfa;--purple-dim:#a78bfa30;
+            --orange:#ec7211;--orange-dim:#ec721130;
+            --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+            --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+            --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+        }
+        body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;}
+
+        /* NAV */
+        .nav{position:sticky;top:0;z-index:100;background:#12121ae0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+        .nav-left{display:flex;align-items:center;gap:28px;}
+        .nav-logo{font-size:17px;font-weight:700;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px;}
+        .nav-logo .logo-novnet{color:var(--orange);font-weight:800;}
+        .nav-logo svg{width:26px;height:26px;}
+        .nav-tabs{display:flex;gap:2px;}
+        .nav-tab{color:var(--text2);text-decoration:none;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:all .2s;cursor:pointer;border:none;background:none;}
+        .nav-tab:hover{color:#fff;background:#ffffff10;}
+        .nav-tab.active{color:var(--blue);background:var(--blue-dim);}
+        .nav-right{display:flex;align-items:center;gap:10px;}
+        .status-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);}
+        .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+        .status-dot.error{background:var(--red);box-shadow:0 0 8px var(--red);}
+        .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:#ffffff10;color:var(--text2);border:1px solid var(--card-border);}
+        .badge-blue{background:var(--blue-dim);color:var(--blue);border-color:var(--blue-dim);}
+
+        /* LAYOUT */
+        .container{max-width:1280px;margin:0 auto;padding:24px;}
+        .tab-content{display:none;}
+        .tab-content.active{display:block;}
+
+        /* GLASS CARDS */
+        .glass{background:var(--card);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--card-border);border-radius:16px;transition:border-color .2s;}
+        .glass:hover{border-color:#ffffff20;}
+        .section-title{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+        .section-title .icon{font-size:20px;}
+
+        /* HERO */
+        .hero{text-align:center;padding:40px 20px 16px;}
+        .hero h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,#fff 0%,var(--blue) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;}
+        .hero p{color:var(--text2);font-size:14px;max-width:700px;margin:0 auto;line-height:1.7;}
+        .hero a{color:var(--blue);text-decoration:none;}
+        .hero a:hover{text-decoration:underline;}
+
+        /* AWS INFO STRIP */
+        .aws-info{margin:20px 0 24px;padding:16px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;font-size:12px;}
+        .aws-info .ai-row{display:flex;align-items:center;gap:6px;}
+        .aws-info .ai-label{color:var(--text3);font-weight:600;white-space:nowrap;}
+        .aws-info .ai-val{font-family:var(--mono);color:var(--text2);word-break:break-all;font-size:11px;}
+        .aws-info .ai-val a{color:var(--blue);text-decoration:none;}
+        .refresh-note{text-align:center;font-size:11px;color:var(--text3);margin-bottom:16px;}
+
+        /* METRICS */
+        .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+        .metric-card{padding:24px;text-align:center;}
+        .metric-label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+        .metric-value{font-size:32px;font-weight:800;color:#fff;}
+        .metric-value.green{color:var(--green);}
+        .metric-value.blue{color:var(--blue);}
+        .metric-value.yellow{color:var(--yellow);}
+        .metric-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+
+        /* HEALTH */
+        .health-panel{padding:24px;margin-bottom:24px;}
+        .health-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+        .health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+        .health-item{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#ffffff06;border-radius:10px;font-size:13px;}
+        .health-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+        .health-item .dot.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
+        .health-item .dot.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow);}
+        .health-item .dot.fail{background:var(--red);box-shadow:0 0 6px var(--red);}
+
+        /* HOW IT WORKS */
+        .how-it-works{padding:24px;margin-bottom:24px;}
+        .hiw-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:12px;}
+        .hiw-step{position:relative;padding:20px;background:#ffffff06;border-radius:12px;}
+        .hiw-step .step-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--blue-dim);color:var(--blue);font-weight:700;font-size:13px;margin-bottom:10px;}
+        .hiw-step h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px;}
+        .hiw-step p{font-size:12px;color:var(--text2);line-height:1.6;}
+        .hiw-step a{color:var(--blue);text-decoration:none;font-size:12px;}
+        .hiw-step a:hover{text-decoration:underline;}
+
+        /* CURL EXAMPLES */
+        .curl-panel{padding:24px;margin-bottom:24px;}
+        .curl-panel pre{background:#0a0a0f;border:1px solid var(--card-border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;overflow-x:auto;color:var(--text2);}
+        .curl-panel .comment{color:var(--text3);}
+        .curl-panel .url{color:var(--green);}
+
+        /* TABLES */
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+        .table-panel{padding:24px;overflow:hidden;}
+        .table-wrap{overflow-x:auto;}
+        table{width:100%;border-collapse:collapse;font-size:13px;}
+        th{text-align:left;padding:10px 12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:11px;border-bottom:1px solid var(--card-border);}
+        td{padding:10px 12px;border-bottom:1px solid #ffffff08;color:var(--text2);}
+        tr:hover td{background:#ffffff05;}
+        .tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+        .tag-active{background:var(--green-dim);color:var(--green);}
+        .tag-expired,.tag-denied,.tag-rejected{background:var(--red-dim);color:var(--red);}
+        .tag-pending,.tag-processing{background:var(--yellow-dim);color:var(--yellow);}
+        .tag-approved,.tag-paid{background:var(--green-dim);color:var(--green);}
+        .tag-verified{background:var(--blue-dim);color:var(--blue);}
+        .mono{font-family:var(--mono);font-size:12px;}
+        .truncate{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;}
+        .empty-msg{text-align:center;color:var(--text3);padding:24px 12px;font-size:13px;}
+
+        /* BLOCKCHAIN */
+        .chain-panel{padding:24px;margin-bottom:24px;}
+        .chain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+        .chain-item{padding:14px;background:#ffffff06;border-radius:10px;}
+        .chain-item .label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+        .chain-item .val{font-family:var(--mono);font-size:13px;color:var(--text);word-break:break-all;}
+
+        /* RESERVE GAUGE */
+        .reserve-panel{padding:24px;margin-bottom:24px;}
+        .gauge-wrap{display:flex;align-items:center;gap:24px;}
+        .gauge{width:120px;height:120px;position:relative;}
+        .gauge svg{transform:rotate(-90deg);}
+        .gauge-bg{fill:none;stroke:#ffffff10;stroke-width:10;}
+        .gauge-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .6s ease,stroke .3s;}
+        .gauge-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+        .gauge-text .ratio{font-size:24px;font-weight:800;color:#fff;}
+        .gauge-text .unit{font-size:11px;color:var(--text3);}
+        .reserve-details{flex:1;}
+        .reserve-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff08;font-size:13px;}
+        .reserve-row:last-child{border:none;}
+        .reserve-row .rlabel{color:var(--text3);}
+        .reserve-row .rval{font-family:var(--mono);color:var(--text);}
+
+        /* CLAIM LOOKUP */
+        .lookup-panel{padding:24px;margin-bottom:24px;}
+        .lookup-row{display:flex;gap:12px;align-items:center;}
+        .lookup-row input{flex:1;background:#ffffff08;border:1px solid var(--card-border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
+        .lookup-row input:focus{border-color:var(--blue);}
+        .btn{padding:10px 20px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+        .btn:hover{background:#2563eb;transform:translateY(-1px);}
+        .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+        .btn-sm{padding:6px 14px;font-size:12px;border-radius:8px;}
+        .btn-refresh{background:#ffffff10;color:var(--text2);border:1px solid var(--card-border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;}
+        .btn-refresh:hover{background:#ffffff18;color:#fff;}
+        .lookup-result{margin-top:14px;display:none;}
+        .lookup-result.visible{display:block;}
+        .lookup-result pre{background:#ffffff06;border:1px solid var(--card-border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:12px;overflow-x:auto;color:var(--text2);white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;}
+
+        /* API DOCS TAB */
+        .endpoint-card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;margin-bottom:16px;overflow:hidden;}
+        .endpoint-header{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;user-select:none;transition:background .15s;}
+        .endpoint-header:hover{background:#ffffff08;}
+        .endpoint-method{font-size:11px;font-weight:700;font-family:var(--mono);padding:3px 8px;border-radius:4px;min-width:40px;text-align:center;}
+        .method-get{background:var(--green-dim);color:var(--green);}
+        .method-post{background:var(--blue-dim);color:var(--blue);}
+        .endpoint-path{font-family:var(--mono);font-size:14px;font-weight:600;color:#fff;}
+        .endpoint-desc{font-size:13px;color:var(--text3);margin-left:auto;}
+        .endpoint-badges{display:flex;gap:6px;margin-left:12px;}
+        .endpoint-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;}
+        .badge-payment{background:var(--yellow-dim);color:var(--yellow);}
+        .badge-public{background:var(--green-dim);color:var(--green);}
+        .badge-rate{background:var(--purple-dim);color:var(--purple);}
+        .chevron{margin-left:8px;color:var(--text3);transition:transform .2s;font-size:16px;}
+        .endpoint-card.open .chevron{transform:rotate(90deg);}
+        .endpoint-body{padding:20px;display:none;border-top:1px solid var(--card-border);}
+        .endpoint-card.open .endpoint-body{display:block;}
+        .param-table{width:100%;border-collapse:collapse;margin:8px 0;}
+        .param-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:6px 10px;border-bottom:1px solid var(--card-border);}
+        .param-table td{padding:6px 10px;font-size:13px;border-bottom:1px solid #ffffff08;vertical-align:top;}
+        .pn{font-family:var(--mono);color:var(--blue);font-weight:600;font-size:12px;}
+        .pt{font-family:var(--mono);color:var(--text3);font-size:11px;}
+        .pr{color:var(--red);font-size:10px;font-weight:700;}
+        .po{color:var(--text3);font-size:10px;font-weight:600;}
+        .sub-heading{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 6px;}
+        .sub-heading:first-child{margin-top:0;}
+        pre.code-block{background:#0a0a0f;border:1px solid var(--card-border);border-radius:8px;padding:14px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--text2);margin:6px 0;}
+        .note-box{background:var(--yellow-dim);border:1px solid #f59e0b40;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--yellow);margin:10px 0;}
+        .try-it{margin-top:12px;}
+        .try-result{margin-top:10px;display:none;}
+        .try-result.visible{display:block;}
+
+        /* PAYMENT FLOW */
+        .flow-steps{display:flex;flex-direction:column;gap:0;margin:12px 0;}
+        .flow-step{display:flex;gap:14px;padding:12px 0;position:relative;}
+        .flow-step:not(:last-child)::after{content:'';position:absolute;left:13px;top:44px;bottom:0;width:2px;background:var(--card-border);}
+        .flow-num{width:28px;height:28px;border-radius:50%;background:var(--blue-dim);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+        .flow-content{flex:1;}
+        .flow-content h4{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;}
+        .flow-content p{font-size:12px;color:var(--text2);}
+
+        /* JSON VIEWER */
+        .json-panel{padding:24px;}
+        .json-panel pre{background:#0a0a0f;border:1px solid var(--card-border);border-radius:10px;padding:20px;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--text2);overflow-x:auto;max-height:600px;overflow-y:auto;}
+        .json-key{color:var(--blue);}
+        .json-string{color:var(--green);}
+        .json-number{color:var(--yellow);}
+        .json-bool{color:var(--purple);}
+        .json-null{color:var(--red);}
+
+        /* FOOTER */
+        .footer{text-align:center;padding:32px 20px;color:var(--text3);font-size:12px;border-top:1px solid var(--card-border);margin-top:24px;line-height:1.8;}
+        .footer a{color:var(--blue);text-decoration:none;}
+        .footer .sep{color:var(--card-border);margin:0 4px;}
+
+        /* RESPONSIVE */
+        @media(max-width:900px){
+            .metrics{grid-template-columns:repeat(2,1fr);}
+            .two-col,.hiw-steps{grid-template-columns:1fr;}
+            .nav-tabs{display:none;}
+            .gauge-wrap{flex-direction:column;}
+        }
+        @media(max-width:500px){.metrics{grid-template-columns:1fr;}.hiw-steps{grid-template-columns:1fr;}}
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar{width:6px;height:6px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:3px;}
     </style>
 </head>
 <body>
-    <!-- Background animation -->
-    <div class="bg-animation" id="bgAnimation"></div>
 
-    <!-- Header -->
-    <div class="header">
-        <a href="https://www.novanet.xyz/" target="_blank" class="logo">
-            <img src="https://cdn.prod.website-files.com/65d52b07d5bc41614daa723f/665df12739c532f45b665fe7_logo-novanet.svg" alt="NovaNet Logo">
+<!-- NAV -->
+<nav class="nav">
+    <div class="nav-left">
+        <a href="/" class="nav-logo">
+            <svg viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="5" fill="#232f3e"/><text x="13" y="17" text-anchor="middle" fill="#ec7211" font-size="12" font-weight="bold" font-family="sans-serif">N</text></svg>
+            <span><span class="logo-novnet">NovNet</span> x402 Insurance</span>
         </a>
-
-        <div class="nav-buttons">
-            <button class="nav-btn" onclick="window.location.href='/'">Home</button>
-            <button class="nav-btn" onclick="window.location.href='/docs'">API Docs</button>
-            <button class="nav-btn" onclick="window.open('https://github.com/hshadab/x402insurance', '_blank')">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: middle; margin-right: 5px;">
-                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                </svg>
-                GitHub
-            </button>
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-tab" data-tab="docs">API Docs</button>
+            <button class="nav-tab" data-tab="pricing">Pricing</button>
+            <button class="nav-tab" data-tab="openapi">OpenAPI</button>
+            <button class="nav-tab" data-tab="agent-card">Agent Card</button>
         </div>
     </div>
+    <div class="nav-right">
+        <span class="status-indicator"><span class="status-dot" id="statusDot"></span><span id="statusText">Checking...</span></span>
+        <span class="badge badge-blue">Base Mainnet</span>
+    </div>
+</nav>
 
-    <!-- Hero Section -->
+<div class="container">
+
+<!-- ==================== DASHBOARD TAB ==================== -->
+<div id="tab-dashboard" class="tab-content active">
+
     <div class="hero">
-        <h1 class="hero-title">x402 Insurance</h1>
-        <h2 class="hero-subtitle">USDC Refunds for AI Agents</h2>
-        <p class="hero-description">
-            Zero-knowledge proof verified insurance for API failures and downtime. Protect your AI agents when services fail with publicly verifiable proofs powered by <a href="https://www.novanet.xyz/" target="_blank" style="color: var(--accent-primary); text-decoration: none;">NovaNet</a>.
-        </p>
-        <div class="hero-badges">
-            <a href="https://github.com/ICME-Lab/zkEngine_dev/tree/main" target="_blank" class="badge" style="text-decoration: none; color: var(--accent-primary);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <h1>Service Dashboard (Read-Only)</h1>
+        <p>Monitoring dashboard for the x402 Insurance Service. The primary service runs on <strong>AWS Bedrock AgentCore</strong> &mdash; this App Runner instance provides read-only status, documentation, and agent discovery. All API operations (insure, claim, verify) are handled by the AgentCore service.</p>
+    </div>
+
+    <!-- AWS INFO -->
+    <div class="glass aws-info">
+        <div class="ai-row"><span class="ai-label">AgentCore:</span> <span class="ai-val">arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</span></div>
+        <div class="ai-row"><span class="ai-label">App Runner:</span> <span class="ai-val">a54c141ba18a4b59b2adfb21bff52730</span></div>
+        <div class="ai-row"><span class="ai-label">Region:</span> <span class="ai-val">us-east-1</span></div>
+        <div class="ai-row"><span class="ai-label">Account:</span> <span class="ai-val">851725214068</span></div>
+    </div>
+
+    <div class="refresh-note" id="refreshNote">Service is operational. Data refreshed at <span id="refreshTime">--</span>.</div>
+
+    <!-- METRICS -->
+    <div class="metrics">
+        <div class="glass metric-card">
+            <div class="metric-label">System Status</div>
+            <div class="metric-value green" id="metricStatus">--</div>
+            <div class="metric-sub" id="metricStatusSub">production</div>
+        </div>
+        <div class="glass metric-card">
+            <div class="metric-label">Total Policies</div>
+            <div class="metric-value" id="metricPolicies">--</div>
+            <div class="metric-sub">Since deployment</div>
+        </div>
+        <div class="glass metric-card">
+            <div class="metric-label">Active Coverage</div>
+            <div class="metric-value blue" id="metricCoverage">--</div>
+            <div class="metric-sub">USDC insured</div>
+        </div>
+        <div class="glass metric-card">
+            <div class="metric-label">Claims Paid</div>
+            <div class="metric-value yellow" id="metricClaims">--</div>
+            <div class="metric-sub">Via ZK proofs</div>
+        </div>
+    </div>
+
+    <!-- HEALTH -->
+    <div class="glass health-panel">
+        <div class="health-header">
+            <div class="section-title" style="margin-bottom:0;">Health Checks</div>
+            <button class="btn-refresh" onclick="fetchHealth()">Refresh</button>
+        </div>
+        <div class="health-grid" id="healthGrid">
+            <div class="health-item"><span class="dot warn"></span>Loading...</div>
+        </div>
+    </div>
+
+    <!-- RESERVE HEALTH -->
+    <div class="glass reserve-panel" id="reservePanel" style="display:none;">
+        <div class="section-title">Reserve Health</div>
+        <div class="gauge-wrap">
+            <div class="gauge">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                    <circle class="gauge-bg" cx="60" cy="60" r="50"/>
+                    <circle class="gauge-fill" id="gaugeFill" cx="60" cy="60" r="50" stroke="var(--green)" stroke-dasharray="314" stroke-dashoffset="314"/>
                 </svg>
-                Zero-Knowledge Proofs
-            </a>
-            <div class="badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                </svg>
-                Base Mainnet
+                <div class="gauge-text"><div class="ratio" id="gaugeRatio">--</div><div class="unit">ratio</div></div>
             </div>
-            <div class="badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v6l4 2"/>
-                </svg>
-                Instant Payouts
+            <div class="reserve-details" id="reserveDetails"></div>
+        </div>
+    </div>
+
+    <!-- TABLES -->
+    <div class="two-col">
+        <div class="glass table-panel">
+            <div class="section-title">Recent Policies</div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Policy ID</th><th>Merchant</th><th>Coverage</th><th>Status</th><th>Created</th></tr></thead>
+                    <tbody id="policiesBody"><tr><td colspan="5"><div class="empty-msg">No policies yet. Agents create policies via POST /insure.</div></td></tr></tbody>
+                </table>
             </div>
-            <div class="badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 11l3 3L22 4"/>
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-                x402 Compliant
+        </div>
+        <div class="glass table-panel">
+            <div class="section-title">Recent Claims</div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Claim ID</th><th>Payout</th><th>HTTP</th><th>Status</th><th>Verified</th><th>Created</th></tr></thead>
+                    <tbody id="claimsBody"><tr><td colspan="6"><div class="empty-msg">No claims yet. Agents submit claims via POST /claim.</div></td></tr></tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Stats -->
-        <div class="dashboard-grid">
-            <div class="card">
-                <div class="card-title">
-                    <span class="status-indicator green"></span>
-                    System Status
-                </div>
-                <div class="card-value" id="systemStatus">Operational</div>
-                <div class="card-label">Base Mainnet Connected</div>
+    <!-- HOW IT WORKS -->
+    <div class="glass how-it-works">
+        <div class="section-title">How It Works</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">The insurance service runs on <strong>AWS Bedrock AgentCore</strong> (port 8080). This dashboard is a read-only monitoring UI hosted on App Runner.</p>
+        <div class="hiw-steps">
+            <div class="hiw-step">
+                <div class="step-badge">1</div>
+                <h4>Agent Buys Coverage</h4>
+                <p>An AI agent sends a <strong>POST /insure</strong> request to the <strong>AgentCore service</strong> with an x402 V2 payment header. Premium is 1% of coverage amount. Payment is verified and settled on-chain via the x402.org facilitator.</p>
             </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v6M12 18h.01"/>
-                    </svg>
-                    USDC Reserve
-                </div>
-                <div class="card-value" id="usdcReserve">Loading...</div>
-                <div class="card-label">Available for refunds</div>
+            <div class="hiw-step">
+                <div class="step-badge">2</div>
+                <h4>API Call Fails</h4>
+                <p>The insured merchant API returns an error (HTTP 500-504) or an empty response. The agent captures the full HTTP response as evidence for the claim.</p>
             </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
-                    Total Coverage
-                </div>
-                <div class="card-value" id="totalCoverage">$0</div>
-                <div class="card-label">Active policies</div>
+            <div class="hiw-step">
+                <div class="step-badge">3</div>
+                <h4>Submit Claim &amp; Generate Proof</h4>
+                <p>Agent sends <strong>POST /claim</strong> to the <strong>AgentCore service</strong>. The server re-fetches the merchant URL for fraud detection, then runs the <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> prover binary. This executes a trained ONNX neural network (<code>claim_classifier.onnx</code> &mdash; a 2-layer MLP classifying failure vs. success) inside a SNARK circuit, producing a cryptographic proof of correct model execution.</p>
             </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="9" y1="15" x2="15" y2="15"/>
-                    </svg>
-                    Total Policies
-                </div>
-                <div class="card-value" id="totalPolicies">0</div>
-                <div class="card-label">Since inception</div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    Claims Paid
-                </div>
-                <div class="card-value" id="claimsPaid">$0</div>
-                <div class="card-label">Via zkEngine proofs</div>
-            </div>
-        </div>
-
-        <!-- Recent Activity -->
-        <div class="dashboard-grid">
-            <!-- Recent Policies -->
-            <div class="card">
-                <div class="card-title">
-                    <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                    Recent Policies
-                </div>
-                <div id="recentPolicies">
-                    <div class="empty-state">
-                        <svg style="width: 48px; height: 48px; opacity: 0.3;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        <div>No policies yet</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Claims -->
-            <div class="card">
-                <div class="card-title">
-                    <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    Recent Claims
-                </div>
-                <div id="recentClaims">
-                    <div class="empty-state">
-                        <svg style="width: 48px; height: 48px; opacity: 0.3;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <path d="m21 21-4.35-4.35"/>
-                        </svg>
-                        <div>No claims yet</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Blockchain Stats -->
-        <div class="card" id="blockchainCard" style="display: none;">
-            <div class="card-title">
-                <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                </svg>
-                Blockchain Status
-            </div>
-            <div class="stats-grid">
-                <div class="stat-box">
-                    <div class="stat-value" id="chainId">8453</div>
-                    <div class="stat-label">Chain ID</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="blockNumber"><div class="loader"></div></div>
-                    <div class="stat-label">Block Number</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="ethBalance">0</div>
-                    <div class="stat-label">ETH Balance</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="usdcBalance">0</div>
-                    <div class="stat-label">USDC Balance</div>
-                </div>
-            </div>
-            <div class="code-block" style="margin-top: 20px;">
-Wallet: <span id="walletAddress">Loading...</span>
-Network: Base Mainnet
-USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-            </div>
-        </div>
-
-        <!-- How It Works -->
-        <div class="card">
-            <div class="card-title">
-                <svg style="width: 20px; height: 20px; margin-right: 8px; opacity: 0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 16v-4M12 8h.01"/>
-                </svg>
-                How It Works
-            </div>
-            <div style="line-height: 1.8; color: var(--text-secondary);">
-                <p style="margin-bottom: 15px;">
-                    <strong style="color: var(--accent-primary);">1. Agents Buy Insurance</strong><br/>
-                    Agents pay a premium (1% of coverage amount) via <strong>x402 agent-to-agent payment</strong> (EIP-712 signed). Payment is verified before policy issuance.
-                </p>
-                <p style="margin-bottom: 15px;">
-                    <strong style="color: var(--accent-primary);">2. zkEngine Generates Proofs</strong><br/>
-                    When an agent submits a claim, zkEngine analyzes the HTTP response and generates a zero-knowledge proof (~22s). The proof cryptographically certifies that failure conditions were met (e.g., status >= 500, empty response) without exposing the actual response data.
-                </p>
-                <p style="margin-bottom: 15px;">
-                    <strong style="color: var(--accent-primary);">3. Refund + Proof Publication</strong><br/>
-                    Two on-chain transactions on Base Mainnet:
-                    <br/>• <strong>💰 Refund TX:</strong> Standard USDC transfer to agent
-                    <br/>• <strong>🔐 Proof TX:</strong> Proof data published for public audit (claim_id, proof_hash, public_inputs)
-                </p>
-                <p style="font-size: 12px; opacity: 0.8; margin-top: 15px; padding: 10px; background: rgba(0, 212, 255, 0.05); border-radius: 8px;">
-                    💡 <strong>Three On-Chain Transactions:</strong> Premium payment (x402), Refund (USDC), Proof publication (data). All viewable on Basescan.
-                </p>
-            </div>
-            <div class="code-block" style="margin-top: 20px;">
-# Failure Detection Logic (proven in zero-knowledge)
-def detect_failure(http_status, body_length):
-    if http_status >= 500:  # Server error
-        return True
-    if body_length == 0:     # Empty response
-        return True
-    return False
+            <div class="hiw-step">
+                <div class="step-badge">4</div>
+                <h4>Verify &amp; Refund On-Chain</h4>
+                <p>The SNARK proof is verified &mdash; confirming the ONNX model was executed correctly over the claimed inputs (http_status, body_length, coverage_amount) and that the output classifies the response as a failure. If valid, USDC is transferred on Base Mainnet to the agent's wallet. The proof is publicly auditable via <strong>POST /verify</strong> on the AgentCore service.</p>
             </div>
         </div>
     </div>
 
-    <script>
-        // Background particles
-        function createParticles() {
-            const bgAnimation = document.getElementById('bgAnimation');
-            for (let i = 0; i < 30; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 20 + 's';
-                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
-                bgAnimation.appendChild(particle);
-            }
-        }
+    <!-- CURL EXAMPLES -->
+    <div class="glass curl-panel">
+        <div class="section-title">Quick Start</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">All write operations (insure, claim, verify) go to the <strong>AgentCore service</strong>. This dashboard serves discovery and health endpoints.</p>
+        <pre><span class="comment"># AgentCore service &mdash; full API (insure, claim, verify)</span>
+<span class="comment"># Use the AgentCore endpoint for all agent operations:</span>
+<span class="comment"># arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</span>
 
-        // Fetch dashboard data
-        async function fetchDashboardData() {
-            try {
-                const response = await fetch('/api/dashboard');
-                const data = await response.json();
-                updateDashboard(data);
-            } catch (error) {
-                console.error('Error fetching dashboard data:', error);
-            }
-        }
+<span class="comment"># Dashboard &mdash; read-only endpoints</span>
+curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/health</span>
+curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known/agent-card.json</span></pre>
+    </div>
 
-        // Update dashboard
-        function updateDashboard(data) {
-            // System stats
-            document.getElementById('totalCoverage').textContent = '$' + data.stats.total_coverage.toLocaleString();
-            document.getElementById('totalPolicies').textContent = data.stats.total_policies;
-            document.getElementById('claimsPaid').textContent = '$' + data.stats.claims_paid.toLocaleString();
+    <!-- BLOCKCHAIN -->
+    <div class="glass chain-panel" id="chainPanel">
+        <div class="section-title">Blockchain</div>
+        <div class="chain-grid" id="chainGrid">
+            <div class="chain-item"><div class="label">Wallet</div><div class="val mono" id="chainWallet">--</div></div>
+            <div class="chain-item"><div class="label">Block</div><div class="val mono" id="chainBlock">--</div></div>
+            <div class="chain-item"><div class="label">ETH Balance</div><div class="val mono" id="chainEth">--</div></div>
+            <div class="chain-item"><div class="label">USDC Balance</div><div class="val mono" id="chainUsdc">--</div></div>
+        </div>
+    </div>
 
-            // Blockchain stats - only show if data is available
-            if (data.blockchain) {
-                document.getElementById('blockNumber').textContent = data.blockchain.block_number.toLocaleString();
-                document.getElementById('ethBalance').textContent = data.blockchain.eth_balance;
-                document.getElementById('usdcBalance').textContent = data.blockchain.usdc_balance;
-                document.getElementById('usdcReserve').textContent = data.blockchain.usdc_balance + ' USDC';
-                document.getElementById('walletAddress').textContent = data.blockchain.wallet_address;
-                document.getElementById('blockchainCard').style.display = 'block';
-            } else {
-                document.getElementById('blockchainCard').style.display = 'none';
-            }
+    <!-- CLAIM LOOKUP -->
+    <div class="glass lookup-panel">
+        <div class="section-title">Claim Lookup</div>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:12px;">Enter a claim ID to view its status, proof data, and refund transaction.</p>
+        <div class="lookup-row">
+            <input type="text" id="lookupClaimId" placeholder="clm_..." />
+            <button class="btn" id="btnLookup" onclick="lookupClaim()">Lookup</button>
+        </div>
+        <div class="lookup-result" id="lookupResult"><pre></pre></div>
+    </div>
 
-            // Recent policies - Timeline View
-            const policiesDiv = document.getElementById('recentPolicies');
-            if (data.recent_policies && data.recent_policies.length > 0) {
-                policiesDiv.innerHTML = data.recent_policies.map(policy => {
-                    const createdAt = new Date(policy.created_at);
-                    const expiresAt = new Date(policy.expires_at);
-                    const now = new Date();
-                    const totalDuration = expiresAt - createdAt;
-                    const elapsed = now - createdAt;
-                    const remaining = expiresAt - now;
-                    const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+</div>
 
-                    // Time remaining calculation
-                    const hoursRemaining = Math.max(0, Math.floor(remaining / (1000 * 60 * 60)));
-                    const minutesRemaining = Math.max(0, Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60)));
+<!-- ==================== API DOCS TAB ==================== -->
+<div id="tab-docs" class="tab-content">
 
-                    let timeRemainingText = '';
-                    let timeClass = '';
-                    if (remaining <= 0) {
-                        timeRemainingText = 'Expired';
-                        timeClass = 'expired';
-                    } else if (hoursRemaining < 2) {
-                        timeRemainingText = `⚠️ ${hoursRemaining}h ${minutesRemaining}m remaining`;
-                        timeClass = 'warning';
-                    } else {
-                        timeRemainingText = `${hoursRemaining}h remaining`;
-                        timeClass = '';
-                    }
+    <div style="padding:32px 0 24px;">
+        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">API Reference</h2>
+        <p style="color:var(--text2);font-size:14px;">Base URL (AgentCore): <span class="mono" style="color:var(--blue);" id="docsBaseUrl"></span></p>
+        <p style="color:var(--text3);font-size:12px;margin-top:4px;">Write endpoints (POST /insure, /claim, /renew, /verify) are served by the AgentCore service. "Try It" buttons hit this dashboard&rsquo;s local endpoints for read-only data.</p>
+    </div>
 
-                    const statusIcon = policy.status === 'active' ? '🟢' :
-                                      policy.status === 'claimed' ? '🔴' : '⚪';
+    <!-- x402 Payment Flow -->
+    <div class="glass" style="padding:24px;margin-bottom:24px;">
+        <div class="section-title">x402 Payment Flow</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Endpoints marked <span class="endpoint-badge badge-payment">x402</span> require payment. Follow this flow:</p>
+        <div class="flow-steps">
+            <div class="flow-step"><div class="flow-num">1</div><div class="flow-content"><h4>POST without payment</h4><p>Server responds 402 with <code>accepts</code> array describing amount, asset, payTo.</p></div></div>
+            <div class="flow-step"><div class="flow-num">2</div><div class="flow-content"><h4>Sign EIP-712 typed data</h4><p>Build payment message with amount, asset, nonce, timestamp. Sign with wallet key.</p></div></div>
+            <div class="flow-step"><div class="flow-num">3</div><div class="flow-content"><h4>Retry with PAYMENT-SIGNATURE header</h4><p>Base64-encode the signed payload. Server verifies via x402.org facilitator and settles on-chain.</p></div></div>
+        </div>
+    </div>
 
-                    return `
-                        <div class="timeline-item">
-                            <div class="timeline-header">
-                                <div>
-                                    <div class="timeline-title">
-                                        ${statusIcon} Policy #${policy.policy_id.substring(0, 8)}
-                                        ${policy.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
-                                    </div>
-                                    <div class="timeline-merchant">${policy.merchant_url || 'Unknown API'}</div>
-                                </div>
-                                <div class="timeline-status ${policy.status}">${policy.status}</div>
-                            </div>
+    <!-- Discovery -->
+    <div style="margin-bottom:12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Discovery</h3></div>
 
-                            ${policy.status === 'active' ? `
-                            <div class="timeline-progress-section">
-                                <div class="timeline-stages">
-                                    <div class="timeline-stage">
-                                        <div>↓</div>
-                                        <div class="timeline-stage-label">Created</div>
-                                    </div>
-                                    <div class="timeline-stage">
-                                        <div>├────────────────┤</div>
-                                        <div class="timeline-stage-label">Active Period</div>
-                                    </div>
-                                    <div class="timeline-stage">
-                                        <div>↓</div>
-                                        <div class="timeline-stage-label">Expires</div>
-                                    </div>
-                                </div>
-                                <div class="timeline-bar-container">
-                                    <div class="timeline-bar-fill" style="width: ${progressPercent}%"></div>
-                                </div>
-                                <div class="timeline-time-remaining ${timeClass}">${timeRemainingText}</div>
-                            </div>
-                            ` : ''}
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/.well-known/agent-card.json</span><span class="endpoint-desc">Agent discovery card</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns capabilities, endpoints, pricing, and agent guidance metadata for service discovery.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/.well-known/agent-card.json',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-                            <div class="timeline-details">
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">💰 Coverage</div>
-                                    <div class="timeline-detail-value">$${(policy.coverage_amount / 1000000).toFixed(4)} USDC</div>
-                                </div>
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">💵 Premium Paid</div>
-                                    <div class="timeline-detail-value">$${(policy.premium / 1000000).toFixed(6)} USDC (x402)</div>
-                                </div>
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">🔗 Agent</div>
-                                    <div class="timeline-detail-value" style="font-size: 11px; font-family: monospace;">${policy.agent_address.substring(0, 10)}...</div>
-                                </div>
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">📅 Created</div>
-                                    <div class="timeline-detail-value" style="font-size: 11px;">${createdAt.toLocaleString()}</div>
-                                </div>
-                            </div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api</span><span class="endpoint-desc">Service info</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns service metadata: version, network, endpoints, x402 payment requirements.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-                            ${policy.status === 'active' ? `
-                            <div class="timeline-actions">
-                                <button class="timeline-btn timeline-btn-primary" onclick="alert('Renewal feature coming soon!')">🔄 Renew Policy</button>
-                                <button class="timeline-btn timeline-btn-secondary" onclick="alert('Policy ID: ${policy.policy_id}')">📋 Copy Policy ID</button>
-                            </div>
-                            ` : ''}
-                        </div>
-                    `;
-                }).join('');
-            }
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api/pricing</span><span class="endpoint-desc">Pricing model</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Premium rates, coverage limits, and economic analysis.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api/pricing',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-            // Recent claims - Timeline View
-            const claimsDiv = document.getElementById('recentClaims');
-            if (data.recent_claims && data.recent_claims.length > 0) {
-                claimsDiv.innerHTML = data.recent_claims.map((claim, index) => {
-                    const claimId = claim.id || claim.claim_id;
-                    const shortClaimId = claimId.substring(0, 8);
-                    const createdAt = new Date(claim.created_at);
-                    const paidAt = claim.paid_at ? new Date(claim.paid_at) : null;
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api/schema</span><span class="endpoint-desc">OpenAPI spec</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Full OpenAPI 3.0 specification in JSON.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api/schema',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-                    // Decode public inputs
-                    const publicInputs = claim.public_inputs || [];
-                    const decoded = decodePublicInputs(publicInputs);
+    <!-- Policies -->
+    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Policies</h3></div>
 
-                    // Calculate processing time
-                    const processingTime = paidAt ? ((paidAt - createdAt) / 1000).toFixed(0) : 'N/A';
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/insure</span><span class="endpoint-desc">Create policy</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Creates insurance policy for a merchant API endpoint. Requires x402 payment (1% of coverage as premium).</p>
+        <div class="sub-heading">Request Body</div>
+        <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><span class="pn">merchant_url</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Merchant API endpoint to insure</td></tr>
+        <tr><td><span class="pn">coverage_amount</span></td><td><span class="pt">number</span></td><td><span class="po">optional</span></td><td>Coverage in USDC (0.001 - 0.1)</td></tr>
+        </table>
+        <div class="sub-heading">Response</div>
+        <pre class="code-block">{
+  "policy_id": "pol_abc123",
+  "agent_address": "0x...",
+  "merchant_url": "https://api.example.com/v1/data",
+  "coverage_amount": 0.01,
+  "premium": 0.0001,
+  "status": "active",
+  "expires_at": "2026-02-01T12:00:00Z"
+}</pre>
+    </div></div>
 
-                    return `
-                        <div class="timeline-item">
-                            <div class="timeline-header">
-                                <div>
-                                    <div class="timeline-title">
-                                        🔴 Claim #${shortClaimId}
-                                        ${claim.is_sample ? '<span class="sample-badge">SAMPLE DATA</span>' : ''}
-                                    </div>
-                                    <div class="timeline-merchant">${claim.merchant_url || 'Unknown API'}</div>
-                                </div>
-                                <div class="timeline-status ${claim.status}">${claim.status}</div>
-                            </div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/policies?wallet=0x...</span><span class="endpoint-desc">List policies</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns all policies for a wallet address.</p></div></div>
 
-                            <div class="timeline-details">
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">💵 Payout Amount</div>
-                                    <div class="timeline-detail-value">$${(claim.payout_amount / 1000000).toFixed(4)} USDC</div>
-                                </div>
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">📊 HTTP Status</div>
-                                    <div class="timeline-detail-value">${claim.http_status} Error</div>
-                                </div>
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">⚡ Processing Time</div>
-                                    <div class="timeline-detail-value">${processingTime}s</div>
-                                </div>
-                                <div class="timeline-detail-item">
-                                    <div class="timeline-detail-label">✓ Failure Detected</div>
-                                    <div class="timeline-detail-value">${decoded.failureDetected ? 'Yes' : 'No'}</div>
-                                </div>
-                            </div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/renew</span><span class="endpoint-desc">Renew policy</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Extends an active policy. Renewal fee = coverage x 1% x (hours/24).</p>
+        <div class="sub-heading">Request Body</div>
+        <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Policy to renew</td></tr>
+        <tr><td><span class="pn">extend_hours</span></td><td><span class="pt">number</span></td><td><span class="po">optional</span></td><td>Hours to extend (default 24, max 168)</td></tr>
+        </table>
+    </div></div>
 
-                            ${claim.status === 'paid' ? `
-                            <div class="claim-timeline">
-                                <div class="claim-timeline-title">📋 Claim Processing Timeline</div>
-                                <div class="claim-timeline-steps">
-                                    <div class="claim-step">
-                                        <div class="claim-step-icon">✓</div>
-                                        <div class="claim-step-time">${createdAt.toLocaleTimeString()}</div>
-                                        <div>You submitted claim</div>
-                                    </div>
-                                    <div class="claim-step">
-                                        <div class="claim-step-icon">✓</div>
-                                        <div class="claim-step-time">+${Math.max(0, processingTime - 5)}s</div>
-                                        <div>Proof generated ⚡</div>
-                                    </div>
-                                    <div class="claim-step">
-                                        <div class="claim-step-icon">✓</div>
-                                        <div class="claim-step-time">+${processingTime}s</div>
-                                        <div>USDC sent to your wallet 💰</div>
-                                    </div>
-                                </div>
-                            </div>
-                            ` : ''}
+    <!-- Claims -->
+    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Claims</h3></div>
 
-                            ${claim.refund_tx_hash || claim.proof_tx_hash ? `
-                            <div class="timeline-details" style="margin-top: 10px;">
-                                ${claim.refund_tx_hash ? `
-                                <div class="timeline-detail-item" style="grid-column: 1 / -1;">
-                                    <div class="timeline-detail-label">💰 Refund Transaction</div>
-                                    <div class="timeline-detail-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">
-                                        ${claim.refund_tx_hash}
-                                    </div>
-                                </div>
-                                ` : ''}
-                                ${claim.proof_tx_hash ? `
-                                <div class="timeline-detail-item" style="grid-column: 1 / -1;">
-                                    <div class="timeline-detail-label">🔐 Proof Publication</div>
-                                    <div class="timeline-detail-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">
-                                        ${claim.proof_tx_hash}
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            ` : ''}
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/claim</span><span class="endpoint-desc">Submit claim</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Submit a claim for a failed API call. Server re-fetches merchant URL, generates Jolt Atlas SNARK proof over ONNX model inference, and issues USDC refund if valid.</p>
+        <div class="note-box"><strong>Fraud Detection:</strong> The server independently re-fetches the merchant URL to verify the failure. If the agent claims 5xx but the server sees 200, the claim is flagged.</div>
+        <div class="sub-heading">Request Body</div>
+        <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Active policy ID</td></tr>
+        <tr><td><span class="pn">http_response.status</span></td><td><span class="pt">integer</span></td><td><span class="pr">REQUIRED</span></td><td>HTTP status code (e.g. 503)</td></tr>
+        <tr><td><span class="pn">http_response.body</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Response body</td></tr>
+        <tr><td><span class="pn">http_response.headers</span></td><td><span class="pt">object</span></td><td><span class="po">optional</span></td><td>Response headers</td></tr>
+        </table>
+        <div class="sub-heading">Query: <code>?async=true</code> for async processing</div>
+        <div class="sub-heading">Response</div>
+        <pre class="code-block">{
+  "claim_id": "clm_xyz789",
+  "status": "paid",
+  "payout_amount": 0.01,
+  "refund_tx_hash": "0xabc...def",
+  "server_verified": true,
+  "server_http_status": 503,
+  "generation_time_ms": 15200
+}</pre>
+    </div></div>
 
-                            <div class="timeline-actions">
-                                <button class="timeline-btn timeline-btn-secondary" onclick="toggleVerification('${claimId}', event)">
-                                    🔐 View Proof Details
-                                </button>
-                                ${claim.refund_tx_hash ? `
-                                <button class="timeline-btn timeline-btn-secondary" onclick="window.open('https://basescan.org/tx/${claim.refund_tx_hash}', '_blank')">
-                                    💰 Refund TX
-                                </button>
-                                ` : ''}
-                                ${claim.proof_tx_hash ? `
-                                <button class="timeline-btn timeline-btn-secondary" onclick="window.open('https://basescan.org/tx/${claim.proof_tx_hash}', '_blank')">
-                                    🔐 Proof TX
-                                </button>
-                                ` : ''}
-                            </div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/claims/:claim_id</span><span class="endpoint-desc">Get claim status</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns claim details. Useful for polling async claims.</p></div></div>
 
-                            <div id="verification-${claimId}" class="verification-section">
-                                <div class="verification-content">
-                                    <div class="verification-field">
-                                        <div class="verification-label">🔐 Proof Hash</div>
-                                        <div class="verification-value">
-                                            <span style="flex: 1;">${claim.proof || 'N/A'}</span>
-                                            <button class="copy-btn" onclick="copyToClipboard('${claim.proof}', this)">Copy</button>
-                                        </div>
-                                    </div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/proofs/:claim_id</span><span class="endpoint-desc">Get proof data</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns the full Jolt Atlas SNARK proof, program_io, and public inputs for a claim.</p></div></div>
 
-                                    <div class="verification-field">
-                                        <div class="verification-label">📊 Public Inputs (Decoded)</div>
-                                        <div class="public-inputs-decoded">
-                                            <div>• Failure Detected: <strong>${decoded.failureDetected ? 'Yes ✓' : 'No'}</strong></div>
-                                            <div>• HTTP Status: <strong>${decoded.httpStatus}</strong></div>
-                                            <div>• Body Length: <strong>${decoded.bodyLength} bytes</strong></div>
-                                            <div>• Payout Amount: <strong>$${(decoded.payoutAmount / 1000000).toFixed(4)} USDC</strong></div>
-                                        </div>
-                                    </div>
+    <!-- Verification -->
+    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Verification</h3></div>
 
-                                    <div class="verification-field">
-                                        <div class="verification-label">📊 Public Inputs (Raw)</div>
-                                        <div class="verification-value">
-                                            <span style="flex: 1;">${JSON.stringify(publicInputs)}</span>
-                                            <button class="copy-btn" onclick="copyToClipboard('${JSON.stringify(publicInputs).replace(/'/g, "\\'")}', this)">Copy</button>
-                                        </div>
-                                    </div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/verify</span><span class="endpoint-desc">Verify SNARK proof</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span><span class="endpoint-badge badge-rate">30/hr</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Independently verify a Jolt Atlas SNARK proof. Confirms the ONNX model was executed correctly and the output is valid. Public, rate-limited.</p>
+        <div class="sub-heading">Request Body</div>
+        <pre class="code-block">{
+  "proof": "base64-encoded-proof",
+  "public_inputs": [1, 503, 0, 10000]
+}</pre>
+    </div></div>
 
-                                    <div class="verification-field">
-                                        <div class="verification-label">🔗 Verify via curl</div>
-                                        <div class="verification-value">
-                                            <span style="flex: 1; font-size: 10px;">curl -X POST https://x402insurance.com/verify -H "Content-Type: application/json" -d '{"proof":"${claim.proof}","public_inputs":${JSON.stringify(publicInputs)}}'</span>
-                                            <button class="copy-btn" onclick="copyToClipboard(\`curl -X POST https://x402insurance.com/verify -H &quot;Content-Type: application/json&quot; -d '{&quot;proof&quot;:&quot;${claim.proof}&quot;,&quot;public_inputs&quot;:${JSON.stringify(publicInputs)}}'\`, this)">Copy</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-        }
+    <!-- Health -->
+    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Health</h3></div>
 
-        // Refresh dashboard
-        function refreshDashboard() {
-            fetchDashboardData();
-        }
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/health</span><span class="endpoint-desc">Health check</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Service health including database, blockchain, prover, and reserve status. Use <code>?full=true</code> for blockchain details.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/health?full=true',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-        // Decode public inputs
-        function decodePublicInputs(publicInputs) {
-            // Expected format: [is_failure, http_status, body_length, payout_amount]
-            if (!publicInputs || publicInputs.length < 4) {
-                return {
-                    failureDetected: false,
-                    httpStatus: 0,
-                    bodyLength: 0,
-                    payoutAmount: 0
-                };
-            }
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/ping</span><span class="endpoint-desc">Liveness probe</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Lightweight liveness check. Returns <code>{"status":"ok"}</code>.</p></div></div>
 
-            return {
-                failureDetected: publicInputs[0] === 1,
-                httpStatus: publicInputs[1],
-                bodyLength: publicInputs[2],
-                payoutAmount: publicInputs[3]  // Already in micro-units
-            };
-        }
+</div>
 
-        // Toggle verification section
-        function toggleVerification(claimId, event) {
-            const section = document.getElementById(`verification-${claimId}`);
-            const button = event.currentTarget;
-            const svg = button.querySelector('svg');
+<!-- ==================== PRICING TAB ==================== -->
+<div id="tab-pricing" class="tab-content">
+    <div style="padding:32px 0 24px;">
+        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">Pricing</h2>
+        <p style="color:var(--text2);font-size:14px;">Live pricing data from <span class="mono" style="color:var(--blue);">/api/pricing</span></p>
+    </div>
+    <div class="glass json-panel">
+        <pre id="pricingJson">Loading...</pre>
+    </div>
+</div>
 
-            if (section.classList.contains('expanded')) {
-                section.classList.remove('expanded');
-                button.classList.remove('expanded');
-                button.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                    Show Verification Data
-                `;
-            } else {
-                section.classList.add('expanded');
-                button.classList.add('expanded');
-                button.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                    Hide Verification Data
-                `;
-            }
-        }
+<!-- ==================== OPENAPI TAB ==================== -->
+<div id="tab-openapi" class="tab-content">
+    <div style="padding:32px 0 24px;">
+        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">OpenAPI Specification</h2>
+        <p style="color:var(--text2);font-size:14px;">Live from <span class="mono" style="color:var(--blue);">/api/schema</span></p>
+    </div>
+    <div class="glass json-panel">
+        <pre id="openapiJson">Loading...</pre>
+    </div>
+</div>
 
-        // Copy to clipboard
-        function copyToClipboard(text, button) {
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = '✓ Copied';
-                button.classList.add('copied');
+<!-- ==================== AGENT CARD TAB ==================== -->
+<div id="tab-agent-card" class="tab-content">
+    <div style="padding:32px 0 24px;">
+        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">Agent Discovery Card</h2>
+        <p style="color:var(--text2);font-size:14px;">Live from <span class="mono" style="color:var(--blue);">/.well-known/agent-card.json</span></p>
+    </div>
+    <div class="glass json-panel">
+        <pre id="agentCardJson">Loading...</pre>
+    </div>
+</div>
 
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                button.textContent = '✗ Failed';
-                setTimeout(() => {
-                    button.textContent = 'Copy';
-                }, 2000);
+</div><!-- /container -->
+
+<!-- FOOTER -->
+<div class="footer">
+    NovNet x402 Insurance &mdash; Primary service on
+    <a href="https://aws.amazon.com/bedrock/" target="_blank">AWS Bedrock AgentCore</a> &middot; Dashboard on
+    <a href="https://aws.amazon.com/apprunner/" target="_blank">AWS App Runner</a> (read-only)
+    <span class="sep">|</span>
+    <a href="#" onclick="event.preventDefault();document.querySelector('[data-tab=docs]').click();">API Docs</a>
+    <span class="sep">|</span>
+    <a href="/.well-known/agent-card.json">Agent Card</a>
+    <span class="sep">|</span>
+    Base Mainnet &middot; x402 Protocol &middot;
+    <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas zkML</a>
+</div>
+
+<script>
+(function(){
+    var $=function(id){return document.getElementById(id);};
+
+    /* ---- TAB SWITCHING ---- */
+    var tabs=document.querySelectorAll('.nav-tab');
+    tabs.forEach(function(t){
+        t.addEventListener('click',function(){
+            tabs.forEach(function(x){x.classList.remove('active');});
+            t.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+            $('tab-'+t.dataset.tab).classList.add('active');
+            if(t.dataset.tab==='pricing'&&!window._pricingLoaded){loadJson('/api/pricing','pricingJson');window._pricingLoaded=true;}
+            if(t.dataset.tab==='openapi'&&!window._openapiLoaded){loadJson('/api/schema','openapiJson');window._openapiLoaded=true;}
+            if(t.dataset.tab==='agent-card'&&!window._agentCardLoaded){loadJson('/.well-known/agent-card.json','agentCardJson');window._agentCardLoaded=true;}
+        });
+    });
+
+    var hash=window.location.hash.replace('#','');
+    if(hash&&$('tab-'+hash)){
+        tabs.forEach(function(t){t.classList.remove('active');if(t.dataset.tab===hash)t.classList.add('active');});
+        document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+        $('tab-'+hash).classList.add('active');
+    }
+
+    /* ---- HELPERS ---- */
+    function truncate(s,n){if(!s)return '--';return s.length>n?s.slice(0,n)+'...':s;}
+    function hostname(url){try{return new URL(url).hostname;}catch(e){return url||'--';}}
+    function fmtDate(d){if(!d)return '--';var dt=new Date(d);return dt.toLocaleDateString()+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+    function fmtTime(){return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});}
+    function tagHtml(status){
+        var s=(status||'').toLowerCase();var cls='tag ';
+        if(s==='active')cls+='tag-active';
+        else if(s==='expired'||s==='denied'||s==='rejected')cls+='tag-expired';
+        else if(s==='pending'||s==='processing')cls+='tag-pending';
+        else if(s==='approved'||s==='paid')cls+='tag-approved';
+        else cls+='tag-pending';
+        return '<span class="'+cls+'">'+status+'</span>';
+    }
+    function verifiedTag(v){
+        if(v===true)return '<span class="tag tag-verified">Yes</span>';
+        if(v===false)return '<span class="tag tag-expired">No</span>';
+        return '<span style="color:var(--text3)">--</span>';
+    }
+    function syntaxHighlight(json){
+        return json.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,function(m){
+                var c='json-number';if(/^"/.test(m)){c=/:$/.test(m)?'json-key':'json-string';}else if(/true|false/.test(m)){c='json-bool';}else if(/null/.test(m)){c='json-null';}
+                return '<span class="'+c+'">'+m+'</span>';
             });
+    }
+    function loadJson(url,elemId){
+        fetch(url).then(function(r){return r.json();}).then(function(d){
+            $(elemId).innerHTML=syntaxHighlight(JSON.stringify(d,null,2));
+        }).catch(function(e){$(elemId).textContent='Error: '+e.message;});
+    }
+
+    /* ---- DASHBOARD DATA ---- */
+    function updateDashboard(data){
+        var s=data.stats||{};
+        $('metricPolicies').textContent=s.total_policies!=null?s.total_policies:'0';
+        $('metricCoverage').textContent='$'+(s.total_coverage!=null?parseFloat(s.total_coverage).toFixed(2):'0.00');
+        $('metricClaims').textContent='$'+(s.claims_paid!=null?parseFloat(s.claims_paid).toFixed(2):'0.00');
+        $('metricStatus').textContent='Healthy';$('metricStatus').className='metric-value green';
+        $('metricStatusSub').textContent='production';
+        $('statusDot').className='status-dot';$('statusText').textContent='Healthy';
+        $('refreshTime').textContent=fmtTime();
+
+        var bc=data.blockchain||{};
+        if(bc.wallet_address){
+            $('chainWallet').textContent=bc.wallet_address;
+            $('chainBlock').textContent=bc.block_number?Number(bc.block_number).toLocaleString():'--';
+            $('chainEth').textContent=bc.eth_balance!=null?bc.eth_balance+' ETH':'--';
+            $('chainUsdc').textContent=bc.usdc_balance!=null?bc.usdc_balance+' USDC':'--';
+        }else{
+            $('chainWallet').textContent='0x0e9AFe2499211c3E35e570968d1047Fcf7488c60';
+            $('chainBlock').textContent='--';$('chainEth').textContent='--';$('chainUsdc').textContent='--';
         }
 
-        // Initialize
-        createParticles();
-        fetchDashboardData();
+        var policies=data.recent_policies||[];
+        var pb=$('policiesBody');
+        if(!policies.length){pb.innerHTML='<tr><td colspan="5"><div class="empty-msg">No policies yet. Agents create policies via POST /insure.</div></td></tr>';
+        }else{
+            pb.innerHTML=policies.map(function(p){
+                return '<tr><td class="mono"><span class="truncate" title="'+(p.policy_id||'')+'">'+truncate(p.policy_id,14)+'</span></td>'
+                    +'<td>'+hostname(p.merchant_url)+'</td>'
+                    +'<td class="mono">$'+(p.coverage_amount!=null?parseFloat(p.coverage_amount).toFixed(4):'--')+'</td>'
+                    +'<td>'+tagHtml(p.status)+'</td>'
+                    +'<td>'+fmtDate(p.created_at)+'</td></tr>';
+            }).join('');
+        }
 
-        // Auto-refresh every 10 seconds
-        setInterval(fetchDashboardData, 10000);
-    </script>
+        var claims=data.recent_claims||[];
+        var cb=$('claimsBody');
+        if(!claims.length){cb.innerHTML='<tr><td colspan="6"><div class="empty-msg">No claims yet. Agents submit claims via POST /claim.</div></td></tr>';
+        }else{
+            cb.innerHTML=claims.map(function(c){
+                return '<tr><td class="mono"><span class="truncate" title="'+(c.claim_id||'')+'">'+truncate(c.claim_id,14)+'</span></td>'
+                    +'<td class="mono">$'+(c.payout_amount!=null?parseFloat(c.payout_amount).toFixed(4):'--')+'</td>'
+                    +'<td class="mono">'+(c.http_status||'--')+'</td>'
+                    +'<td>'+tagHtml(c.status)+'</td>'
+                    +'<td>'+verifiedTag(c.server_verified)+'</td>'
+                    +'<td>'+fmtDate(c.created_at)+'</td></tr>';
+            }).join('');
+        }
+    }
+
+    function fetchDashboardData(){
+        fetch('/api/dashboard').then(function(r){return r.json();}).then(updateDashboard)
+        .catch(function(){
+            $('metricStatus').textContent='Error';$('metricStatus').className='metric-value';$('metricStatus').style.color='var(--red)';
+            $('metricStatusSub').textContent='Could not reach API';
+            $('statusDot').className='status-dot error';$('statusText').textContent='Offline';
+        });
+    }
+
+    window.fetchHealth=function(){
+        fetch('/health').then(function(r){return r.json();}).then(function(d){
+            var checks=d.checks||d;
+            var grid=$('healthGrid');
+            if(typeof checks==='object'&&!Array.isArray(checks)){
+                var keys=Object.keys(checks);
+                grid.innerHTML=keys.map(function(k){
+                    var v=checks[k];
+                    var ok=(v===true||v==='ok'||v==='healthy'||(typeof v==='object'&&(v.status==='ok'||v.status==='healthy'||v.status==='operational'||v.healthy===true)));
+                    var skip=(typeof v==='object'&&v.status==='skipped');
+                    var warn=(v==='degraded'||(typeof v==='object'&&(v.status==='degraded'||v.status==='disabled')));
+                    var cls=ok?'ok':(skip?'warn':(warn?'warn':'fail'));
+                    var detail=typeof v==='object'?(v.status||v.message||v.mode||JSON.stringify(v)):(v===true?'ok':v===false?'fail':v);
+                    return '<div class="health-item"><span class="dot '+cls+'"></span><span><strong>'+k+'</strong>: '+detail+'</span></div>';
+                }).join('');
+            }
+        }).catch(function(){
+            $('healthGrid').innerHTML='<div class="health-item"><span class="dot fail"></span>Health endpoint unreachable</div>';
+        });
+    };
+
+    function fetchReserves(){
+        fetch('/api/reserves').then(function(r){if(!r.ok)throw new Error('n/a');return r.json();}).then(function(d){
+            if(!d||!d.reserve_ratio)return;
+            $('reservePanel').style.display='';
+            var ratio=parseFloat(d.reserve_ratio)||0;
+            var pct=Math.min(ratio/3,1);
+            var offset=314-(314*pct);
+            var fill=$('gaugeFill');
+            fill.style.strokeDashoffset=offset;
+            fill.style.stroke=ratio>=1.5?'var(--green)':(ratio>=1.0?'var(--yellow)':'var(--red)');
+            $('gaugeRatio').textContent=ratio.toFixed(2)+'x';
+            var det=$('reserveDetails');
+            det.innerHTML=[
+                ['Status',d.status||'--'],
+                ['USDC Balance',(d.usdc_balance||'--')+' USDC'],
+                ['Active Coverage',(d.active_coverage||'--')+' USDC'],
+                ['Min Ratio',d.min_ratio||'1.5x']
+            ].map(function(r){return '<div class="reserve-row"><span class="rlabel">'+r[0]+'</span><span class="rval">'+r[1]+'</span></div>';}).join('');
+        }).catch(function(){});
+    }
+
+    /* ---- CLAIM LOOKUP ---- */
+    window.lookupClaim=function(){
+        var id=$('lookupClaimId').value.trim();if(!id)return;
+        var btn=$('btnLookup');var res=$('lookupResult');var pre=res.querySelector('pre');
+        btn.disabled=true;btn.textContent='Looking up...';
+        res.classList.add('visible');pre.textContent='Fetching...';
+        fetch('/claims/'+encodeURIComponent(id))
+        .then(function(r){return r.json();})
+        .then(function(d){pre.innerHTML=syntaxHighlight(JSON.stringify(d,null,2));})
+        .catch(function(e){pre.textContent='Error: '+e.message;})
+        .finally(function(){btn.disabled=false;btn.textContent='Lookup';});
+    };
+
+    /* ---- TRY IT ---- */
+    window.tryEndpoint=function(url,btnElem){
+        var container=btnElem.nextElementSibling;
+        var pre=container.querySelector('pre');
+        btnElem.disabled=true;btnElem.textContent='Loading...';
+        container.classList.add('visible');pre.textContent='Fetching...';
+        fetch(url).then(function(r){return r.json();}).then(function(d){
+            pre.innerHTML=syntaxHighlight(JSON.stringify(d,null,2));
+        }).catch(function(e){pre.textContent='Error: '+e.message;})
+        .finally(function(){btnElem.disabled=false;btnElem.textContent='Try It';});
+    };
+
+    if($('docsBaseUrl'))$('docsBaseUrl').textContent=window.location.origin;
+
+    fetchDashboardData();
+    fetchHealth();
+    fetchReserves();
+    setInterval(fetchDashboardData,15000);
+    setInterval(fetchHealth,30000);
+})();
+</script>
 </body>
 </html>

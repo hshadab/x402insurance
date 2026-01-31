@@ -51,7 +51,7 @@ RATE_LIMIT_CLAIM=10 per hour
 RATE_LIMIT_RENEW=5 per hour
 
 # Timeouts (in seconds)
-ZKENGINE_TIMEOUT=60
+JOLT_TIMEOUT=60
 BLOCKCHAIN_CONFIRMATION_TIMEOUT=120
 
 # Chain configuration
@@ -89,19 +89,21 @@ REQUIRE_CLAIM_AUTHENTICATION=true
 **Production Default**: Enabled by default in `ProductionConfig` class
 
 **Usage**:
-When authentication is enabled, claims must include x402 payment headers:
+When authentication is enabled, claims must include the x402 V2 payment header:
 
 ```bash
 POST /claim
 Headers:
-  X-Payment: <payment-proof>
-  X-Payer: <payer-address>
+  PAYMENT-SIGNATURE: <base64-encoded-json-payment-payload>
 Body:
   {
     "policy_id": "...",
     "http_response": {...}
   }
 ```
+
+The `PAYMENT-SIGNATURE` header contains a base64-encoded JSON object with EIP-712
+signed payment details. The server verifies this via the x402.org facilitator.
 
 ### 4. Configurable CORS Origins
 
@@ -144,21 +146,21 @@ RATE_LIMIT_RENEW=10 per hour
 
 ### 6. Configurable Timeouts
 
-**Issue**: Timeouts for zkEngine and blockchain operations were hardcoded.
+**Issue**: Timeouts for Jolt Atlas and blockchain operations were hardcoded.
 
 **Fix**: Made timeouts configurable via environment variables.
 
 **Configuration**:
 ```bash
-# zkEngine proof generation timeout (default: 60s)
-ZKENGINE_TIMEOUT=60
+# Jolt Atlas proof generation timeout (default: 60s)
+JOLT_TIMEOUT=60
 
 # Blockchain transaction confirmation timeout (default: 120s)
 BLOCKCHAIN_CONFIRMATION_TIMEOUT=120
 ```
 
 **Affected Components**:
-- `zkengine_client.py`: Uses `ZKENGINE_TIMEOUT` for proof generation
+- `proof_client.py`: Uses `JOLT_TIMEOUT` for Jolt Atlas proof generation
 - `blockchain.py`: Uses `BLOCKCHAIN_CONFIRMATION_TIMEOUT` for transaction confirmations
 
 ### 7. Configurable Chain ID
@@ -225,6 +227,11 @@ CHAIN_ID=84532
 - [ ] Set up Redis for distributed rate limiting (if using multiple instances)
 
 ## Changelog
+
+**2026-01-31 (v2.3.0)**:
+- Updated to x402 V2 facilitator-based payment flow (`PAYMENT-SIGNATURE` header)
+- Server-side fraud detection via merchant URL re-fetch
+- Jolt Atlas 3-argument prover interface
 
 **2025-11-12**:
 - Removed exposed credentials from `.env`

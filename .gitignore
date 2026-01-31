@@ -13,7 +13,7 @@
 # Testing
 # Virtual Environment
 # git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env' --prune-empty --tag-name-filter cat -- --all
-# zkEngine
+# Jolt Atlas
 *$py.class
 *.cover
 *.db
@@ -79,4 +79,9 @@ var/
 venv/
 wallet_key*
 wheels/
-zkengine/*
+jolt-atlas/jolt_claims_prover
+jolt-prover/target/
+models/claim_classifier.onnx
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
+*.pyc

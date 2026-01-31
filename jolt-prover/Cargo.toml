@@ -1,0 +1,41 @@
+[package]
+name = "jolt-claims-prover"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "jolt_claims_prover"
+path = "src/main.rs"
+
+[dependencies]
+# Jolt Atlas zkML framework (real SNARK proofs over ONNX inference)
+zkml-jolt-core = { git = "https://github.com/ICME-Lab/jolt-atlas", branch = "main" }
+onnx-tracer = { git = "https://github.com/ICME-Lab/jolt-atlas", branch = "main" }
+jolt-core = { git = "https://github.com/ICME-Lab/zkml-jolt", branch = "dev", package = "jolt-core", default-features = true }
+
+# Arkworks crypto (must match jolt-atlas pinned versions)
+ark-bn254 = "0.5.0"
+ark-serialize = { version = "0.5.0", features = ["derive"] }
+
+# Standard utilities
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.22"
+sha2 = "0.10"
+
+[profile.release]
+strip = true
+lto = "fat"
+debug = 1
+
+[profile.build-fast]
+inherits = "release"
+incremental = true
+lto = "off"
+
+# Must patch arkworks to match jolt-atlas expectations
+[patch.crates-io]
+ark-ff = { git = "https://github.com/a16z/arkworks-algebra", branch = "dev/twist-shout" }
+ark-ec = { git = "https://github.com/a16z/arkworks-algebra", branch = "dev/twist-shout" }
+ark-serialize = { git = "https://github.com/a16z/arkworks-algebra", branch = "dev/twist-shout" }
+ark-bn254 = { git = "https://github.com/a16z/arkworks-algebra", branch = "dev/twist-shout" }

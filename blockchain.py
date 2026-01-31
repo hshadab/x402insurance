@@ -41,25 +41,27 @@ class BlockchainClient:
         self,
         rpc_url: str,
         usdc_address: str,
-        private_key: str = None,
+        private_key: str,
         max_gas_price_gwei: int = 100,
         max_retries: int = 3,
         confirmation_timeout: int = 120
     ):
+        if not private_key:
+            raise RuntimeError(
+                "BACKEND_WALLET_PRIVATE_KEY is required. "
+                "Blockchain refunds cannot operate without a funded wallet."
+            )
+
         self.w3 = Web3(Web3.HTTPProvider(rpc_url))
         self.max_gas_price_gwei = max_gas_price_gwei
         self.max_retries = max_retries
         self.confirmation_timeout = confirmation_timeout
-        self.has_wallet = bool(private_key)
         self.logger = logging.getLogger("x402insurance.blockchain")
 
-        if self.has_wallet:
-            self.account = self.w3.eth.account.from_key(private_key)
-            self.usdc_address = Web3.to_checksum_address(usdc_address)
-            self.usdc = self.w3.eth.contract(address=self.usdc_address, abi=ERC20_ABI)
-            self.logger.info("Blockchain initialized with wallet: %s", self.account.address)
-        else:
-            self.logger.warning("No private key, using MOCK mode for refunds")
+        self.account = self.w3.eth.account.from_key(private_key)
+        self.usdc_address = Web3.to_checksum_address(usdc_address)
+        self.usdc = self.w3.eth.contract(address=self.usdc_address, abi=ERC20_ABI)
+        self.logger.info("Blockchain initialized with wallet: %s", self.account.address)
 
     def get_balance(self, address: Optional[str] = None) -> int:
         """
@@ -71,9 +73,6 @@ class BlockchainClient:
         Returns:
             Balance in USDC units (6 decimals)
         """
-        if not self.has_wallet:
-            return 0
-
         addr = Web3.to_checksum_address(address or self.account.address)
         try:
             balance = self.usdc.functions.balanceOf(addr).call()
@@ -84,9 +83,6 @@ class BlockchainClient:
 
     def get_eth_balance(self, address: Optional[str] = None) -> int:
         """Get ETH balance in wei"""
-        if not self.has_wallet:
-            return 0
-
         addr = Web3.to_checksum_address(address or self.account.address)
         try:
             return self.w3.eth.get_balance(addr)
@@ -108,11 +104,6 @@ class BlockchainClient:
         Raises:
             Exception: If refund fails after retries
         """
-        if not self.has_wallet:
-            # Mock mode
-            self.logger.info("Mock refund to %s for %s units", to_address, amount)
-            return (f"0xMOCK{amount:016x}1234567890abcdef" * 2)[:66]
-
         to_address = Web3.to_checksum_address(to_address)
 
         # Check balance before attempting transfer

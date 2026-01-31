@@ -1,12 +1,13 @@
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "agentCardVersion": "1.0",
   "identity": {
     "name": "x402 Insurance",
     "description": "Zero-knowledge proof verified insurance against x402 merchant fraud. Protect AI agents' micropayment API calls with instant, cryptographically-verified refunds on Base Mainnet.",
     "provider": "x402 Insurance",
-    "version": "1.0.0",
-    "url": "https://your-domain.com",
+    "version": "2.0.0",
+    "url": "https://x402insurance.example.com",
+    "_note": "For live URLs use the GET /.well-known/agent-card.json endpoint which returns dynamic URLs",
     "category": "insurance",
     "tags": ["insurance", "x402", "zkp", "fraud-protection", "micropayments", "refunds"]
   },
@@ -15,14 +16,15 @@
     "zkProofs": true,
     "instantRefunds": true,
     "micropayments": true,
-    "networks": ["base"],
+    "networks": ["eip155:8453"],
     "protocols": ["x402", "a2a"],
     "features": [
       "Zero-knowledge fraud verification",
       "Instant USDC refunds (15-30s)",
       "Public proof auditability",
       "Privacy-preserving verification",
-      "1% percentage-based premiums"
+      "1% percentage-based premiums",
+      "x402 V2 facilitator-based settlement"
     ]
   },
   "services": [
@@ -30,19 +32,22 @@
       "id": "insurance-policy",
       "name": "Create Insurance Policy",
       "description": "Purchase insurance protection for x402 API calls. Pay 1% premium for 100% coverage (up to $0.1 USDC). Get instant refunds if merchant fails.",
-      "endpoint": "https://your-domain.com/insure",
+      "endpoint": "https://x402insurance.example.com/insure",
       "method": "POST",
       "x402Required": true,
-      "payment": {
-        "scheme": "exact",
-        "network": "base",
-        "maxAmountRequired": "1000",
-        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "payTo": "0xf36B80afFb2e41418874FfA56B069f1Fe671FC35",
-        "description": "Insurance premium (1% of coverage amount)",
-        "mimeType": "application/json",
-        "maxTimeoutSeconds": 60
-      },
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "maxAmountRequired": "1000",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x053C9AaDC64954A8800916FbC781685D92C3A875",
+          "description": "Insurance premium (1% of coverage amount)",
+          "maxTimeoutSeconds": 60,
+          "extra": {}
+        }
+      ],
+      "resource": {"url": "/insure", "method": "POST"},
       "inputSchema": {
         "type": "object",
         "required": ["merchant_url", "coverage_amount"],
@@ -65,44 +70,13 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "policy_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Unique policy identifier"
-          },
-          "agent_address": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "Agent's wallet address"
-          },
-          "merchant_url": {
-            "type": "string",
-            "format": "uri",
-            "description": "Protected API endpoint"
-          },
-          "coverage_amount": {
-            "type": "integer",
-            "description": "Coverage in USDC smallest units (1 USDC = 1,000,000)"
-          },
-          "premium": {
-            "type": "integer",
-            "description": "Premium paid in USDC smallest units"
-          },
-          "status": {
-            "type": "string",
-            "enum": ["active", "expired", "claimed"],
-            "description": "Policy status"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Policy creation timestamp"
-          },
-          "expires_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Policy expiration timestamp (24 hours)"
-          }
+          "policy_id": {"type": "string", "format": "uuid"},
+          "agent_address": {"type": "string", "pattern": "^0x[a-fA-F0-9]{40}$"},
+          "coverage_amount": {"type": "integer"},
+          "premium": {"type": "integer"},
+          "status": {"type": "string", "enum": ["active", "expired", "claimed"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "expires_at": {"type": "string", "format": "date-time"}
         }
       },
       "examples": [
@@ -114,7 +88,6 @@
           "response": {
             "policy_id": "550e8400-e29b-41d4-a716-446655440000",
             "agent_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-            "merchant_url": "https://api.weather.com/forecast",
             "coverage_amount": 10000,
             "premium": 100,
             "status": "active",
@@ -128,34 +101,21 @@
       "id": "submit-claim",
       "name": "Submit Fraud Claim",
       "description": "File a claim when a merchant fails to deliver service. Provide HTTP response data for zero-knowledge verification. Get instant refund upon proof verification.",
-      "endpoint": "https://your-domain.com/claim",
+      "endpoint": "https://x402insurance.example.com/claim",
       "method": "POST",
       "x402Required": false,
       "inputSchema": {
         "type": "object",
         "required": ["policy_id", "http_response"],
         "properties": {
-          "policy_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Policy ID from insurance purchase"
-          },
+          "policy_id": {"type": "string", "format": "uuid"},
           "http_response": {
             "type": "object",
             "required": ["status", "body"],
             "properties": {
-              "status": {
-                "type": "integer",
-                "description": "HTTP status code from merchant API"
-              },
-              "body": {
-                "type": "string",
-                "description": "Response body (empty string if no response)"
-              },
-              "headers": {
-                "type": "object",
-                "description": "HTTP response headers (optional)"
-              }
+              "status": {"type": "integer"},
+              "body": {"type": "string"},
+              "headers": {"type": "object"}
             }
           }
         }
@@ -163,45 +123,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "claim_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "proof": {
-            "type": "string",
-            "description": "Zero-knowledge proof hex string"
-          },
-          "public_inputs": {
-            "type": "array",
-            "items": {"type": "integer"},
-            "description": "[fraud_detected, http_status, body_length, payout_amount]"
-          },
-          "payout_amount": {
-            "type": "integer",
-            "description": "Refund amount in USDC smallest units"
-          },
-          "refund_tx_hash": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{64}$",
-            "description": "Blockchain transaction hash for refund"
-          },
-          "status": {
-            "type": "string",
-            "enum": ["pending", "paid", "rejected"]
-          },
-          "proof_url": {
-            "type": "string",
-            "format": "uri",
-            "description": "Public URL to verify proof"
-          }
+          "claim_id": {"type": "string", "format": "uuid"},
+          "proof": {"type": "string"},
+          "public_inputs": {"type": "array", "items": {"type": "integer"}},
+          "payout_amount": {"type": "integer"},
+          "refund_tx_hash": {"type": "string", "pattern": "^0x[a-fA-F0-9]{64}$"},
+          "status": {"type": "string", "enum": ["pending", "paid", "rejected"]},
+          "proof_url": {"type": "string", "format": "uri"}
         }
       }
     },
     {
       "id": "policy-lookup",
       "name": "Lookup Active Policies",
-      "description": "Find all active insurance policies for your wallet. Solves the agent memory problem - retrieve policy_id using just your wallet address when you need to file a claim.",
-      "endpoint": "https://your-domain.com/policies",
+      "description": "Find all active insurance policies for your wallet. Solves the agent memory problem.",
+      "endpoint": "https://x402insurance.example.com/policies",
       "method": "GET",
       "x402Required": false,
       "inputSchema": {
@@ -211,131 +147,24 @@
           "wallet": {
             "type": "string",
             "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "Your wallet address (the one that paid for insurance)",
-            "example": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+            "description": "Your wallet address"
           }
         }
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "wallet_address": {
-            "type": "string",
-            "description": "The queried wallet address"
-          },
-          "active_policies": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "policy_id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "description": "Use this ID to file claims"
-                },
-                "merchant_url": {
-                  "type": "string",
-                  "description": "The API you protected"
-                },
-                "coverage_amount": {
-                  "type": "integer",
-                  "description": "Coverage in USDC smallest units"
-                },
-                "premium": {
-                  "type": "integer",
-                  "description": "Premium you paid"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": ["active"]
-                },
-                "created_at": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "expires_at": {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              }
-            }
-          },
-          "total_coverage": {
-            "type": "integer",
-            "description": "Sum of all active coverage"
-          },
-          "claim_endpoint": {
-            "type": "string",
-            "description": "Where to submit claims"
-          },
-          "note": {
-            "type": "string",
-            "description": "Usage instructions"
-          }
-        }
-      },
-      "examples": [
-        {
-          "request": {
-            "wallet": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-          },
-          "response": {
-            "wallet_address": "0x742d35cc6634c0532925a3b844bc9e7595f0beb",
-            "active_policies": [
-              {
-                "policy_id": "550e8400-e29b-41d4-a716-446655440000",
-                "merchant_url": "https://api.weather.com/forecast",
-                "coverage_amount": 10000,
-                "premium": 100,
-                "status": "active",
-                "created_at": "2025-11-07T10:00:00Z",
-                "expires_at": "2025-11-08T10:00:00Z"
-              }
-            ],
-            "total_coverage": 10000,
-            "claim_endpoint": "/claim",
-            "note": "Use policy_id from any active policy to file a claim if merchant fails"
-          }
-        }
-      ]
+      }
     },
     {
       "id": "verify-proof",
       "name": "Verify ZK Proof",
-      "description": "Publicly verify a zero-knowledge proof of merchant fraud. Anyone can verify claims are legitimate without exposing private data.",
-      "endpoint": "https://your-domain.com/verify",
+      "description": "Publicly verify a zero-knowledge proof of merchant fraud.",
+      "endpoint": "https://x402insurance.example.com/verify",
       "method": "POST",
       "x402Required": false,
       "inputSchema": {
         "type": "object",
         "required": ["proof", "public_inputs"],
         "properties": {
-          "proof": {
-            "type": "string",
-            "description": "Zero-knowledge proof hex string"
-          },
-          "public_inputs": {
-            "type": "array",
-            "items": {"type": "integer"},
-            "description": "Public inputs: [fraud_detected, http_status, body_length, payout_amount]"
-          }
-        }
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "valid": {
-            "type": "boolean",
-            "description": "Whether proof is cryptographically valid"
-          },
-          "fraud_detected": {
-            "type": "boolean",
-            "description": "Whether fraud conditions were met"
-          },
-          "payout_amount": {
-            "type": "integer",
-            "description": "Verified payout amount"
-          }
+          "proof": {"type": "string"},
+          "public_inputs": {"type": "array", "items": {"type": "integer"}}
         }
       }
     }
@@ -346,24 +175,12 @@
     "min_coverage": 0.01,
     "max_coverage": 0.1,
     "currency": "USDC",
-    "network": "base",
+    "network": "eip155:8453",
     "policy_duration_hours": 24,
     "examples": [
-      {
-        "coverage": 0.01,
-        "premium": 0.0001,
-        "description": "Protect 0.01 USDC API call for 0.0001 USDC (1%) = 100x protection"
-      },
-      {
-        "coverage": 0.05,
-        "premium": 0.0005,
-        "description": "Protect 0.05 USDC API call for 0.0005 USDC (1%) = 100x protection"
-      },
-      {
-        "coverage": 0.1,
-        "premium": 0.001,
-        "description": "Protect 0.1 USDC API call for 0.001 USDC (1%) = 100x protection"
-      }
+      {"coverage": 0.01, "premium": 0.0001, "description": "100x protection"},
+      {"coverage": 0.05, "premium": 0.0005, "description": "100x protection"},
+      {"coverage": 0.1, "premium": 0.001, "description": "100x protection"}
     ]
   },
   "fraud_detection": {
@@ -385,34 +202,39 @@
     "policy_creation_time_ms": "500-1000"
   },
   "security": {
-    "zk_proof_system": "zkEngine (Nova/Spartan SNARKs on Bn256)",
+    "zk_proof_system": "Jolt Atlas (SNARK proofs over ONNX model inference)",
     "privacy": "Merchant identity and API content remain private",
     "auditability": "All proofs publicly verifiable on-chain",
     "trustless": "Math proves fraud, not human judgment"
   },
   "blockchain": {
-    "network": "base",
+    "network": "eip155:8453",
     "chain_id": 8453,
     "usdc_contract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "backend_wallet": "0xf36B80afFb2e41418874FfA56B069f1Fe671FC35",
+    "backend_wallet": "0x053C9AaDC64954A8800916FbC781685D92C3A875",
     "explorer": "https://basescan.org"
   },
+  "facilitator": {
+    "url": "https://x402.org/facilitator",
+    "verify_endpoint": "/verify",
+    "settle_endpoint": "/settle"
+  },
   "links": {
-    "documentation": "https://your-domain.com/docs",
-    "pricing": "https://your-domain.com/api/pricing",
-    "schema": "https://your-domain.com/api/schema",
-    "dashboard": "https://your-domain.com/api/dashboard",
+    "documentation": "https://x402insurance.example.com/docs",
+    "pricing": "https://x402insurance.example.com/api/pricing",
+    "schema": "https://x402insurance.example.com/api/schema",
+    "dashboard": "https://x402insurance.example.com/api/dashboard",
     "github": "https://github.com/hshadab/x402insurance",
     "issue_tracker": "https://github.com/coinbase/x402/issues/508"
   },
   "discovery": {
-    "agent_card": "https://your-domain.com/.well-known/agent-card.json",
-    "openapi": "https://your-domain.com/api/schema",
-    "health": "https://your-domain.com/health"
+    "agent_card": "https://x402insurance.example.com/.well-known/agent-card.json",
+    "openapi": "https://x402insurance.example.com/api/schema",
+    "health": "https://x402insurance.example.com/health"
   },
   "contact": {
     "support_url": "https://github.com/hshadab/x402insurance/issues",
     "provider_name": "x402 Insurance",
-    "provider_wallet": "0xf36B80afFb2e41418874FfA56B069f1Fe671FC35"
+    "provider_wallet": "0x053C9AaDC64954A8800916FbC781685D92C3A875"
   }
 }

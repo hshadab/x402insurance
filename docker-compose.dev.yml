@@ -4,20 +4,20 @@ version: '3.8'
 # Usage: docker-compose -f docker-compose.dev.yml up
 
 services:
-  # Development Flask application with hot-reload
+  # Full insurance service (AgentCore primary)
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: x402-insurance-dev
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
       # App Configuration (Development mode)
       - ENV=development
       - DEBUG=true
-      - PORT=8000
+      - PORT=8080
       - HOST=0.0.0.0
       - LOG_LEVEL=DEBUG
 
@@ -30,8 +30,8 @@ services:
       - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
       - BACKEND_WALLET_ADDRESS=${BACKEND_WALLET_ADDRESS}
 
-      # zkEngine
-      - ZKENGINE_BINARY_PATH=./zkengine/fraud_detector
+      # Jolt Atlas
+      - JOLT_BINARY_PATH=./jolt-atlas/jolt_claims_prover
 
       # Payment verification (simple mode for dev)
       - PAYMENT_VERIFICATION_MODE=simple
@@ -47,6 +47,9 @@ services:
       - RATE_LIMIT_ENABLED=true
       - RATE_LIMIT_STORAGE_URL=redis://redis:6379/0
 
+      # Redis / Huey
+      - REDIS_URL=redis://redis:6379/0
+
     volumes:
       # Mount source code for hot-reload
       - .:/app
@@ -57,7 +60,52 @@ services:
       - redis
     networks:
       - x402-dev-network
-    command: python -u server.py
+    command: python -u agentcore_agent.py
+
+  # Read-only dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: x402-dashboard-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - DEBUG=true
+      - PORT=8000
+      - AGENTCORE_SERVICE_URL=http://app:8080
+      - CORS_ORIGINS=*
+    volumes:
+      - .:/app
+    networks:
+      - x402-dev-network
+
+  # Huey background worker
+  huey-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: x402-huey-worker
+    restart: unless-stopped
+    environment:
+      - ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://x402user:x402pass@postgres:5432/x402insurance_dev
+      - BASE_RPC_URL=${BASE_RPC_URL:-https://sepolia.base.org}
+      - USDC_CONTRACT_ADDRESS=${USDC_CONTRACT_ADDRESS:-0x036CbD53842c5426634e7929541eC2318f3dCF7e}
+      - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
+      - BACKEND_WALLET_ADDRESS=${BACKEND_WALLET_ADDRESS}
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - x402-dev-network
+    command: huey_consumer tasks.huey_config.huey -w 2 -k thread
 
   # PostgreSQL Database (Development)
   postgres:
@@ -75,7 +123,7 @@ services:
     networks:
       - x402-dev-network
 
-  # Redis for rate limiting
+  # Redis for rate limiting and Huey task queue
   redis:
     image: redis:7-alpine
     container_name: x402-redis-dev

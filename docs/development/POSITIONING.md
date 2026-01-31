@@ -12,12 +12,12 @@
 
 **The Mechanism:**
 ```
-Agent pays premium (1 USDC) → TO US (the insurer)
-Agent pays for API (X USDC) → TO MERCHANT (via x402)
-Merchant fails (503, empty) → Keeps the X USDC
-Agent files claim with us    → Submits HTTP response
-zkEngine generates proof     → Math proves fraud
-We pay agent X USDC         → FROM OUR RESERVES (not merchant's)
+Agent pays premium (1% of coverage) → TO US (the insurer)
+Agent pays for API (X USDC)         → TO MERCHANT (via x402)
+Merchant fails (503, empty)         → Keeps the X USDC
+Agent files claim with us           → Submits HTTP response
+Jolt Atlas generates SNARK proof    → Math proves failure
+We pay agent up to coverage amount  → FROM OUR RESERVES (not merchant's)
 ```
 
 **Key insight:** Merchant keeps their payment. We pay from our pool. This is insurance.
@@ -86,7 +86,7 @@ We pay agent X USDC         → FROM OUR RESERVES (not merchant's)
 
 **What we provide:**
 1. ✅ **Automated refunds** when merchants fail to deliver
-2. ✅ **Cryptographic proofs** of fraud via zkEngine (Nova/Arecibo SNARKs)
+2. ✅ **Cryptographic proofs** of fraud via Jolt Atlas (SNARK proofs over ONNX model inference)
 3. ✅ **Public auditability** - anyone can verify proofs
 4. ✅ **Instant settlement** - USDC refunds on Base Mainnet
 
@@ -100,15 +100,15 @@ We pay agent X USDC         → FROM OUR RESERVES (not merchant's)
 ### Technical Architecture
 
 ```
-Agent pays 1 USDC premium → Insurance policy created (24h coverage)
+Agent pays 1% premium → Insurance policy created (24h coverage, max 0.1 USDC)
                              ↓
 Agent makes API call → Merchant returns 503 error
                              ↓
-Agent submits claim → zkEngine generates proof (~15s)
+Agent submits claim → Server re-fetches merchant URL (fraud check)
                              ↓
-Proof verified → USDC refund issued automatically
+Jolt Atlas generates SNARK proof (~10-20s)
                              ↓
-Public proof published → Anyone can verify on-chain
+Proof verified → USDC refund issued on Base Mainnet
 ```
 
 ### Zero-Knowledge Proofs: The Technical Differentiator
@@ -122,9 +122,9 @@ How do we prove a merchant failed WITHOUT:
 
 **The Solution:**
 
-zkEngine generates a cryptographic proof that mathematically proves:
+Jolt Atlas generates a cryptographic proof that mathematically proves:
 - ✅ HTTP status was >= 500 OR body length was 0
-- ✅ Fraud detection WASM executed correctly
+- ✅ ONNX model inference executed correctly
 - ✅ Payout amount ≤ policy coverage
 - ✅ All fraud logic rules were followed
 
@@ -164,11 +164,10 @@ zkEngine generates a cryptographic proof that mathematically proves:
 - 🔒 Internal business logic details
 
 **Proof Technology:**
-- Nova IVC (Incremental Verifiable Computation)
-- Spartan SNARK on Bn256 curve with IPA commitments
+- Jolt Atlas SNARK with Dory polynomial commitment scheme
+- ONNX model inference proven inside SNARK circuit
 - ~10-20 second generation time
-- Publicly verifiable by anyone
-- WASM-based fraud detection (fraud_detector.wat)
+- Publicly verifiable by anyone (via `/verify` endpoint or binary)
 
 ### Why This Is Revolutionary
 
@@ -297,16 +296,12 @@ if response.status_code >= 500:
 
 ## Pricing Strategy
 
-### Testing Phase (Current)
-- **Premium:** 1 USDC
-- **Max Coverage:** 100 USDC per policy
-- **Duration:** 24 hours
+### Current (v2.3.0)
+- **Premium:** 1% of coverage amount
+- **Coverage range:** 0.001 - 0.1 USDC per policy
+- **Duration:** 24 hours (default, configurable)
 - **Network:** Base Mainnet
-
-### Production Pricing (Proposed)
-- **Tier 1 - Basic:** 10 USDC premium → 1,000 USDC coverage
-- **Tier 2 - Pro:** 100 USDC premium → 10,000 USDC coverage
-- **Tier 3 - Enterprise:** Custom pricing for high-volume agents
+- **Payment:** x402 V2 via facilitator
 
 **Profitability model:**
 - Assumes 90%+ of merchants are honest
@@ -318,7 +313,7 @@ if response.status_code >= 500:
 ## Traction & Validation
 
 ### Technical Validation
-- ✅ zkEngine real SNARKs (Nova/Arecibo) working in production
+- ✅ Jolt Atlas real SNARK proofs working in production
 - ✅ Base Mainnet integration confirmed
 - ✅ Official x402 Python middleware integrated
 - ✅ Public proof verification functional
@@ -350,7 +345,7 @@ if response.status_code >= 500:
 - Proof validates → Refund issued (30 seconds)
 
 ### 3. Privacy-Preserving
-- zkEngine hides sensitive data
+- Jolt Atlas hides sensitive data
 - Merchant URL stays private
 - Response content never exposed
 - Only fraud signal is public
@@ -372,7 +367,7 @@ if response.status_code >= 500:
 
 ### Phase 1: MVP (Current)
 - ✅ Basic fraud detection (500+ errors, empty responses)
-- ✅ zkEngine proof generation
+- ✅ Jolt Atlas proof generation
 - ✅ USDC refunds on Base
 - ✅ Dashboard UI
 
@@ -450,7 +445,7 @@ if response.status_code >= 500:
 - No existing solution from Coinbase or competitors
 
 **Our unique approach:**
-- zkEngine cryptographic proofs (not just ML risk scores)
+- Jolt Atlas cryptographic proofs (not just ML risk scores)
 - Actual USDC refunds (not just liability attribution)
 - Public verifiability (transparency builds trust)
 

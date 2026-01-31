@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: x402 Insurance API
-  version: 2.2.0
+  version: 2.3.0
   description: |
     Zero-Knowledge Proof verified insurance against x402 merchant fraud.
 
@@ -9,7 +9,11 @@ info:
     This API provides micropayment insurance for x402 protocol users. Agents can purchase
     insurance policies to protect against merchant failures, and submit claims with zkp proofs.
 
-    ## What's New in v2.2.0
+    ## What's New in v2.3.0
+    - **x402 V2 Payment Flow**: Full facilitator-based verification and settlement
+    - **Server-Side Re-fetch Fraud Detection**: `merchant_url` required — server re-fetches to verify claims
+    - **Jolt Atlas 3-Argument Prover**: `coverage_amount_units` passed to prover for payout calculation
+    - **Claim Response Enrichment**: `server_verified`, `server_http_status`, `merchant_url` in responses
     - **Async Proof Generation**: Use `?async=true` on /claim to avoid timeout risk
     - **Policy Renewal**: Extend policies before expiration with /renew endpoint
     - **Agent Memory Solution**: Lookup policies by wallet address with /policies endpoint
@@ -27,7 +31,7 @@ info:
     - Protection Ratio: Up to 100x coverage
 
     ## Zero-Knowledge Proofs
-    All fraud claims are verified using zkEngine (Nova/Arecibo SNARKs).
+    All fraud claims are verified using Jolt Atlas (SNARK proofs over ONNX inference).
     Proofs are publicly verifiable without revealing merchant identity.
 
   contact:
@@ -40,8 +44,8 @@ info:
 servers:
   - url: http://localhost:8000
     description: Local development server
-  - url: https://your-domain.example.com
-    description: Production server (placeholder)
+  - url: https://x402insurance.onrender.com
+    description: Production server
 
 tags:
   - name: discovery
@@ -146,12 +150,13 @@ paths:
         **x402 Payment Required:**
         - Premium: percentage-based (1% of requested coverage)
         - Asset: USDC on Base Mainnet
-        - Network: base
+        - Network: eip155:8453 (CAIP-2)
 
-        **Payment Flow:**
-        1. POST without payment → 402 response with payment details
-        2. Sign payment with wallet
-        3. POST with x402 headers → 201 policy created
+        **Payment Flow (V2):**
+        1. POST without payment → 402 response with V2 `accepts` array
+        2. Sign payment and encode as base64 JSON
+        3. POST with `PAYMENT-SIGNATURE` header → 201 policy created
+        4. Server verifies via facilitator and settles on-chain
 
       tags: [policies]
       requestBody:
@@ -176,10 +181,14 @@ paths:
         '402':
           description: Payment Required
           headers:
+            PAYMENT-REQUIRED:
+              schema:
+                type: string
+              description: x402 V2 payment requirements
             X-Payment-Required:
               schema:
                 type: string
-              description: x402 payment details
+              description: x402 V1 payment details (backward compat)
           content:
             application/json:
               schema:
@@ -206,6 +215,15 @@ paths:
         - Status code: 503, 500, 404, or other error codes
         - Empty response body
         - Missing critical headers
+
+        **Server-Side Re-fetch (v2.3.0):**
+        The server independently re-fetches `merchant_url` to verify the claimed failure.
+        The `server_verified` and `server_http_status` fields in the response indicate
+        whether the server confirmed the failure.
+
+        **Jolt Prover (v2.3.0):**
+        The prover now accepts 3 arguments: `http_status`, `body_length`, `coverage_amount_units`.
+        The `coverage_amount_units` is used to compute the payout amount in the proof's public inputs.
 
         **Async Mode (NEW in v2.2.0):**
         Add `?async=true` query parameter to enable async processing:
@@ -353,7 +371,7 @@ paths:
         **x402 Payment Required:**
         - Amount: Pro-rated renewal fee
         - Asset: USDC on Base Mainnet
-        - Network: base
+        - Network: eip155:8453 (CAIP-2)
 
         **Payment Flow:**
         1. POST without payment → 402 response with renewal fee
@@ -383,10 +401,14 @@ paths:
         '402':
           description: Payment Required
           headers:
+            PAYMENT-REQUIRED:
+              schema:
+                type: string
+              description: x402 V2 payment requirements for renewal fee
             X-Payment-Required:
               schema:
                 type: string
-              description: x402 payment details for renewal fee
+              description: x402 V1 payment details (backward compat)
           content:
             application/json:
               schema:
@@ -408,7 +430,7 @@ paths:
     post:
       summary: Verify Zero-Knowledge Proof
       description: |
-        Public endpoint to verify a zkEngine proof. Anyone can verify proofs
+        Public endpoint to verify a Jolt Atlas proof. Anyone can verify proofs
         without accessing private policy data.
 
         This enables:
@@ -561,7 +583,7 @@ components:
         status:
           type: string
           enum: [healthy, unhealthy]
-        zkengine:
+        jolt_atlas:
           type: string
           enum: [operational, error]
         blockchain:
@@ -660,7 +682,13 @@ components:
       required:
         - policy_id
         - http_response
+        - merchant_url
       properties:
+        merchant_url:
+          type: string
+          format: uri
+          description: Merchant API URL (must match policy). Used for server-side re-fetch fraud detection.
+          example: "https://api.example.com/data"
         policy_id:
           type: string
           format: uuid
@@ -719,6 +747,16 @@ components:
         status:
           type: string
           enum: [paid, pending, rejected]
+        server_verified:
+          type: boolean
+          description: Whether server independently re-fetched the merchant URL to verify failure
+        server_http_status:
+          type: integer
+          description: HTTP status code from server's independent re-fetch of merchant URL
+        merchant_url:
+          type: string
+          format: uri
+          description: The merchant API URL that was checked
         proof_url:
           type: string
           description: URL to retrieve full proof data
@@ -942,34 +980,46 @@ components:
     PaymentRequired:
       type: object
       properties:
-        error:
-          type: string
-          example: "Payment required"
-        payment:
+        x402Version:
+          type: integer
+          example: 2
+        accepts:
+          type: array
+          items:
+            type: object
+            properties:
+              scheme:
+                type: string
+                example: "exact"
+              network:
+                type: string
+                example: "eip155:8453"
+                description: "CAIP-2 network identifier"
+              amount:
+                type: string
+                description: Amount in smallest units (USDC has 6 decimals)
+                example: "1000"
+              asset:
+                type: string
+                example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                description: "USDC contract address"
+              payTo:
+                type: string
+                description: Backend wallet address
+              maxTimeoutSeconds:
+                type: integer
+                example: 60
+              extra:
+                type: object
+        resource:
           type: object
           properties:
-            amount:
+            url:
               type: string
-              description: Amount in smallest units (USDC has 6 decimals)
-              example: "1000"
-            asset:
-              type: object
-              properties:
-                address:
-                  type: string
-                  example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-                decimals:
-                  type: integer
-                  example: 6
-                symbol:
-                  type: string
-                  example: "USDC"
-            pay_to:
+              example: "/insure"
+            method:
               type: string
-              description: Backend wallet address
-            network:
-              type: string
-              example: "base"
+              example: "POST"
 
     Error:
       type: object

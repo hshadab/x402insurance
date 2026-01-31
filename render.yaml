@@ -1,63 +1,22 @@
 services:
-  # Simple Python web service (no Docker needed!)
+  # Dashboard-only service (read-only, no wallet/blockchain deps)
   - type: web
-    name: x402-insurance
+    name: x402-insurance-dashboard
     runtime: python
     region: oregon
-    plan: starter  # Free tier available
+    plan: starter
 
-    # Simple build and start commands
     buildCommand: pip install -r requirements-prod.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 server:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 30 dashboard_server:app
 
-    # Health check
     healthCheckPath: /health
-
-    # Auto-deploy from GitHub
     autoDeploy: true
     branch: main
 
-    # Environment variables
     envVars:
       - key: ENV
         value: production
       - key: FLASK_ENV
         value: production
-      - key: BASE_RPC_URL
-        value: https://mainnet.base.org
-      - key: USDC_CONTRACT_ADDRESS
-        value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-      - key: CHAIN_ID
-        value: 8453
-      - key: ZKENGINE_BINARY_PATH
-        value: ./zkengine/fraud_detector
-      - key: PREMIUM_PERCENTAGE
-        value: 0.01
-      - key: MAX_COVERAGE_USDC
-        value: 0.1
-      - key: POLICY_DURATION_HOURS
-        value: 24
-      - key: PAYMENT_VERIFICATION_MODE
-        value: full
-      - key: PAYMENT_MAX_AGE_SECONDS
-        value: 300
-      - key: ALLOWED_ORIGINS
-        value: "*"
-      - key: RATE_LIMIT_DEFAULT
-        value: 200 per day
-      - key: RATE_LIMIT_INSURE
-        value: 50 per hour
-      - key: RATE_LIMIT_CLAIM
-        value: 10 per hour
-
-      # Secrets (set in Render dashboard)
-      - key: BACKEND_WALLET_PRIVATE_KEY
-        sync: false
-      - key: BACKEND_WALLET_ADDRESS
-        sync: false
-
-    # Persistent storage for data
-    disk:
-      name: x402-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
+      - key: AGENTCORE_SERVICE_URL
+        value: https://4axkjkepdx.us-east-1.awsapprunner.com

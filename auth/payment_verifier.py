@@ -1,10 +1,12 @@
 """
-x402 Payment Verification Module
+x402 Payment Verification Module (V2)
 
-Handles proper verification of x402 payments including:
-- EIP-712 signature verification
+Handles verification of x402 payments including:
+- V2: Facilitator-based verification and settlement via x402.org
+- V2: Base64-encoded JSON PaymentPayload parsing
+- V1 (fallback): EIP-712 signature verification
 - Timestamp/expiry validation
-- Replay attack prevention
+- Replay attack prevention (via database-backed nonce storage)
 - Amount verification
 """
 from eth_account import Account
@@ -13,13 +15,13 @@ try:
 except ImportError:
     from eth_account.messages import encode_structured_data
 from web3 import Web3
+import base64
 import time
 import json
 import logging
-from pathlib import Path
-from typing import Optional, Dict, Tuple
+import httpx
+from typing import Optional, Dict
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger("x402insurance.payment_verifier")
 
@@ -35,56 +37,250 @@ class PaymentDetails:
     nonce: str
     signature: str
     is_valid: bool
+    settlement_tx: Optional[str] = None
 
 
-class PaymentVerifier:
-    """Verify x402 payments with proper signature validation"""
+class FacilitatorPaymentVerifier:
+    """
+    x402 V2 Payment Verifier using facilitator API.
 
-    def __init__(self, backend_address: str, usdc_address: str, nonce_storage_path: Optional[Path] = None, chain_id: int = 8453):
+    Delegates verification and settlement to a facilitator endpoint
+    (e.g. https://x402.org/facilitator).
+    """
+
+    def __init__(
+        self,
+        backend_address: str,
+        usdc_address: str,
+        facilitator_url: str = "https://x402.org/facilitator",
+        chain_id: int = 8453,
+        database=None,
+    ):
         self.backend_address = Web3.to_checksum_address(backend_address)
         self.usdc_address = Web3.to_checksum_address(usdc_address)
+        self.facilitator_url = facilitator_url.rstrip("/")
         self.chain_id = chain_id
-        self.nonce_storage_path = nonce_storage_path or Path("data/nonce_cache.json")
-        self.cache_cleanup_interval = 3600  # Clean up old nonces every hour
+        self.caip2_network = f"eip155:{chain_id}"
+        self._database = database
+        self.cache_cleanup_interval = 3600
         self.last_cleanup = time.time()
 
-        # Load nonce cache from disk if it exists (survives restarts)
-        self.nonce_cache = self._load_nonce_cache()
         logger.info(
-            "PaymentVerifier initialized with %d cached nonces (persistent storage: %s, chain_id: %d)",
-            len(self.nonce_cache), self.nonce_storage_path, self.chain_id
+            "FacilitatorPaymentVerifier initialized (facilitator=%s, chain_id=%d)",
+            self.facilitator_url, self.chain_id
         )
+
+    @property
+    def database(self):
+        """Lazy access to database — allows ext.database to be set after init."""
+        if self._database is not None:
+            return self._database
+        import extensions as ext
+        return ext.database
 
     def verify_payment(
         self,
         payment_header: str,
         payer_address: Optional[str],
         required_amount: int,
-        max_age_seconds: int = 300  # 5 minutes
+        max_age_seconds: int = 300,
     ) -> PaymentDetails:
         """
-        Verify x402 payment from headers
-
-        Args:
-            payment_header: X-Payment header value
-            payer_address: X-Payer or X-From-Address header value
-            required_amount: Expected payment amount in USDC units (6 decimals)
-            max_age_seconds: Maximum age of payment timestamp
-
-        Returns:
-            PaymentDetails with is_valid flag
+        Verify x402 V2 payment via facilitator /verify endpoint.
+        Falls back to V1 comma-separated parsing if base64 decode fails.
         """
         try:
-            # Parse payment header
-            payment_data = self._parse_payment_header(payment_header)
+            payment_payload = self._parse_v2_payment_header(payment_header)
+            if payment_payload is None:
+                payment_payload = self._parse_v1_payment_header(payment_header)
 
+            if not payment_payload:
+                return PaymentDetails(
+                    payer="", amount_units=0, asset="", pay_to="",
+                    timestamp=0, nonce="", signature="", is_valid=False
+                )
+
+            payment_requirements = {
+                "scheme": "exact",
+                "network": self.caip2_network,
+                "maxAmountRequired": str(required_amount),
+                "asset": self.usdc_address,
+                "payTo": self.backend_address,
+                "maxTimeoutSeconds": 60,
+                "extra": {},
+            }
+
+            verify_result = self._call_facilitator_verify(
+                payment_payload=payment_payload,
+                payment_requirements=payment_requirements,
+            )
+
+            if not verify_result or not verify_result.get("isValid", False):
+                payer = verify_result.get("payer", payer_address or "") if verify_result else (payer_address or "")
+                logger.warning("Facilitator verification failed: %s", verify_result)
+                return PaymentDetails(
+                    payer=payer, amount_units=required_amount, asset=self.usdc_address,
+                    pay_to=self.backend_address, timestamp=int(time.time()),
+                    nonce="", signature="", is_valid=False
+                )
+
+            payer = verify_result.get("payer", payer_address or "")
+
+            nonce = payment_payload.get("nonce", "") if isinstance(payment_payload, dict) else ""
+            if nonce and self.database and self.database.is_nonce_used(payer, nonce):
+                logger.warning("Nonce already used: payer=%s nonce=%s", payer, nonce)
+                return PaymentDetails(
+                    payer=payer, amount_units=required_amount, asset=self.usdc_address,
+                    pay_to=self.backend_address, timestamp=int(time.time()),
+                    nonce=nonce, signature="", is_valid=False
+                )
+
+            if nonce and self.database:
+                self.database.mark_nonce_used(payer, nonce, int(time.time()))
+
+            self._maybe_cleanup_nonces()
+
+            logger.info("Payment verified via facilitator: payer=%s amount=%s", payer, required_amount)
+            return PaymentDetails(
+                payer=payer, amount_units=required_amount, asset=self.usdc_address,
+                pay_to=self.backend_address, timestamp=int(time.time()),
+                nonce=nonce, signature="", is_valid=True
+            )
+
+        except Exception as e:
+            logger.exception("FacilitatorPaymentVerifier error: %s", e)
+            return PaymentDetails(
+                payer="", amount_units=0, asset="", pay_to="",
+                timestamp=0, nonce="", signature="", is_valid=False
+            )
+
+    def settle_payment(
+        self,
+        payment_header: str,
+        payment_requirements: dict,
+    ) -> Optional[Dict]:
+        """Call facilitator /settle to execute payment on-chain."""
+        try:
+            payment_payload = self._parse_v2_payment_header(payment_header)
+            if payment_payload is None:
+                payment_payload = self._parse_v1_payment_header(payment_header)
+
+            if not payment_payload:
+                return None
+
+            response = httpx.post(
+                f"{self.facilitator_url}/settle",
+                json={
+                    "paymentPayload": payment_payload,
+                    "paymentRequirements": payment_requirements,
+                },
+                timeout=30.0,
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                logger.info("Payment settled: tx=%s", result.get("transaction"))
+                return result
+            else:
+                logger.warning("Facilitator /settle failed: %s %s", response.status_code, response.text)
+                return None
+
+        except Exception as e:
+            logger.exception("Settlement error: %s", e)
+            return None
+
+    def _call_facilitator_verify(self, payment_payload, payment_requirements) -> Optional[Dict]:
+        """Call facilitator /verify endpoint."""
+        try:
+            response = httpx.post(
+                f"{self.facilitator_url}/verify",
+                json={
+                    "paymentPayload": payment_payload,
+                    "paymentRequirements": payment_requirements,
+                },
+                timeout=15.0,
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.warning("Facilitator /verify returned %s: %s", response.status_code, response.text)
+                return None
+
+        except Exception as e:
+            logger.exception("Facilitator /verify error: %s", e)
+            return None
+
+    def _parse_v2_payment_header(self, payment_header: str) -> Optional[Dict]:
+        """Parse V2 PAYMENT-SIGNATURE header (base64-encoded JSON)."""
+        try:
+            decoded = base64.b64decode(payment_header)
+            payload = json.loads(decoded)
+            if isinstance(payload, dict):
+                return payload
+            return None
+        except (ValueError, json.JSONDecodeError):
+            return None
+
+    def _parse_v1_payment_header(self, payment_header: str) -> Optional[Dict]:
+        """Parse V1 X-Payment header (comma-separated key=value)."""
+        try:
+            parts = {}
+            for item in payment_header.split(","):
+                if "=" in item:
+                    key, value = item.split("=", 1)
+                    parts[key.strip()] = value.strip()
+            return parts if parts else None
+        except (ValueError, AttributeError):
+            return None
+
+    def _maybe_cleanup_nonces(self):
+        if time.time() - self.last_cleanup > self.cache_cleanup_interval:
+            self.last_cleanup = time.time()
+            if self.database:
+                try:
+                    self.database.cleanup_nonces()
+                except Exception as e:
+                    logger.warning("Nonce cleanup failed: %s", e)
+
+
+class PaymentVerifier:
+    """Verify x402 payments with proper EIP-712 signature validation (V1 fallback)"""
+
+    def __init__(self, backend_address: str, usdc_address: str, chain_id: int = 8453, database=None):
+        self.backend_address = Web3.to_checksum_address(backend_address)
+        self.usdc_address = Web3.to_checksum_address(usdc_address)
+        self.chain_id = chain_id
+        self._database = database
+        self.cache_cleanup_interval = 3600
+        self.last_cleanup = time.time()
+        logger.info(
+            "PaymentVerifier initialized (chain_id: %d)", self.chain_id
+        )
+
+    @property
+    def database(self):
+        if self._database is not None:
+            return self._database
+        import extensions as ext
+        return ext.database
+
+    def verify_payment(
+        self,
+        payment_header: str,
+        payer_address: Optional[str],
+        required_amount: int,
+        max_age_seconds: int = 300
+    ) -> PaymentDetails:
+        """Verify x402 payment from headers (V1 EIP-712 local verification)"""
+        try:
+            payment_data = self._parse_payment_header(payment_header)
             if not payment_data:
                 return PaymentDetails(
                     payer="", amount_units=0, asset="", pay_to="",
                     timestamp=0, nonce="", signature="", is_valid=False
                 )
 
-            # Extract fields
             payer = payment_data.get('payer', payer_address or '')
             amount = int(payment_data.get('amount', 0))
             asset = payment_data.get('asset', self.usdc_address)
@@ -93,7 +289,6 @@ class PaymentVerifier:
             nonce = payment_data.get('nonce', '')
             signature = payment_data.get('signature', '')
 
-            # Validate basic fields
             if not all([payer, amount, asset, pay_to, timestamp, nonce, signature]):
                 logger.warning("Missing required payment fields")
                 return PaymentDetails(
@@ -101,42 +296,29 @@ class PaymentVerifier:
                     timestamp=timestamp, nonce=nonce, signature=signature, is_valid=False
                 )
 
-            # Validate amount matches
             if amount != required_amount:
-                logger.warning(
-                    "Payment amount mismatch: provided=%s required=%s",
-                    amount, required_amount
-                )
+                logger.warning("Payment amount mismatch: provided=%s required=%s", amount, required_amount)
                 return PaymentDetails(
                     payer=payer, amount_units=amount, asset=asset, pay_to=pay_to,
                     timestamp=timestamp, nonce=nonce, signature=signature, is_valid=False
                 )
 
-            # Validate recipient
             if Web3.to_checksum_address(pay_to) != self.backend_address:
-                logger.warning(
-                    "Payment recipient mismatch: provided=%s expected=%s",
-                    pay_to, self.backend_address
-                )
+                logger.warning("Payment recipient mismatch: provided=%s expected=%s", pay_to, self.backend_address)
                 return PaymentDetails(
                     payer=payer, amount_units=amount, asset=asset, pay_to=pay_to,
                     timestamp=timestamp, nonce=nonce, signature=signature, is_valid=False
                 )
 
-            # Validate asset
             if Web3.to_checksum_address(asset) != self.usdc_address:
-                logger.warning(
-                    "Payment asset mismatch: provided=%s expected=%s",
-                    asset, self.usdc_address
-                )
+                logger.warning("Payment asset mismatch: provided=%s expected=%s", asset, self.usdc_address)
                 return PaymentDetails(
                     payer=payer, amount_units=amount, asset=asset, pay_to=pay_to,
                     timestamp=timestamp, nonce=nonce, signature=signature, is_valid=False
                 )
 
-            # Validate timestamp (not too old, not in future)
             current_time = int(time.time())
-            if timestamp > current_time + 60:  # Allow 60s clock skew
+            if timestamp > current_time + 60:
                 logger.warning("Payment timestamp in future: %s", timestamp)
                 return PaymentDetails(
                     payer=payer, amount_units=amount, asset=asset, pay_to=pay_to,
@@ -144,37 +326,27 @@ class PaymentVerifier:
                 )
 
             if current_time - timestamp > max_age_seconds:
-                logger.warning(
-                    "Payment timestamp too old: %s (max age: %s)",
-                    current_time - timestamp, max_age_seconds
-                )
+                logger.warning("Payment timestamp too old: %s (max age: %s)", current_time - timestamp, max_age_seconds)
                 return PaymentDetails(
                     payer=payer, amount_units=amount, asset=asset, pay_to=pay_to,
                     timestamp=timestamp, nonce=nonce, signature=signature, is_valid=False
                 )
 
-            # Check for replay attack (nonce reuse)
-            if self._is_nonce_used(payer, nonce):
+            if self.database and self.database.is_nonce_used(payer, nonce):
                 logger.warning("Nonce already used: payer=%s nonce=%s", payer, nonce)
                 return PaymentDetails(
                     payer=payer, amount_units=amount, asset=asset, pay_to=pay_to,
                     timestamp=timestamp, nonce=nonce, signature=signature, is_valid=False
                 )
 
-            # Verify EIP-712 signature
             is_valid = self._verify_signature(
-                payer=payer,
-                amount=amount,
-                asset=asset,
-                pay_to=pay_to,
-                timestamp=timestamp,
-                nonce=nonce,
-                signature=signature
+                payer=payer, amount=amount, asset=asset, pay_to=pay_to,
+                timestamp=timestamp, nonce=nonce, signature=signature
             )
 
             if is_valid:
-                # Mark nonce as used
-                self._mark_nonce_used(payer, nonce, timestamp)
+                if self.database:
+                    self.database.mark_nonce_used(payer, nonce, timestamp)
                 logger.info("Payment verified successfully: payer=%s amount=%s", payer, amount)
             else:
                 logger.warning("Payment signature verification failed: payer=%s", payer)
@@ -192,44 +364,33 @@ class PaymentVerifier:
             )
 
     def _parse_payment_header(self, payment_header: str) -> Optional[Dict]:
-        """Parse x402 payment header"""
+        """Parse x402 payment header (V1 comma-separated or V2 base64)"""
         try:
-            # Simple comma-separated format: key=value,key=value
+            decoded = base64.b64decode(payment_header)
+            payload = json.loads(decoded)
+            if isinstance(payload, dict):
+                return payload
+        except (ValueError, json.JSONDecodeError):
+            pass
+
+        try:
             parts = {}
             for item in payment_header.split(','):
                 if '=' in item:
                     key, value = item.split('=', 1)
                     parts[key.strip()] = value.strip()
             return parts
-        except Exception as e:
+        except (ValueError, AttributeError) as e:
             logger.exception("Error parsing payment header: %s", e)
             return None
 
-    def _verify_signature(
-        self,
-        payer: str,
-        amount: int,
-        asset: str,
-        pay_to: str,
-        timestamp: int,
-        nonce: str,
-        signature: str
-    ) -> bool:
-        """
-        Verify EIP-712 signature for x402 payment
-
-        This implements a simplified EIP-712 signature verification.
-        In production, use the exact domain and message structure from x402 spec.
-        """
+    def _verify_signature(self, payer, amount, asset, pay_to, timestamp, nonce, signature) -> bool:
         try:
-            # Define EIP-712 domain
             domain_data = {
                 "name": "x402 Payment",
                 "version": "1",
-                "chainId": self.chain_id,  # Configurable chain ID (Base Mainnet: 8453, Base Sepolia: 84532)
+                "chainId": self.chain_id,
             }
-
-            # Define message structure
             message_types = {
                 "EIP712Domain": [
                     {"name": "name", "type": "string"},
@@ -245,7 +406,6 @@ class PaymentVerifier:
                     {"name": "nonce", "type": "string"},
                 ]
             }
-
             message_data = {
                 "payer": Web3.to_checksum_address(payer),
                 "amount": amount,
@@ -254,161 +414,29 @@ class PaymentVerifier:
                 "timestamp": timestamp,
                 "nonce": nonce,
             }
-
-            # Encode structured data
             structured_msg = {
                 "types": message_types,
                 "primaryType": "Payment",
                 "domain": domain_data,
                 "message": message_data,
             }
-
-            encoded_msg = encode_structured_data(structured_msg)
-
-            # Recover signer address from signature
+            try:
+                encoded_msg = encode_structured_data(full_message=structured_msg)
+            except TypeError:
+                encoded_msg = encode_structured_data(structured_msg)
             recovered_address = Account.recover_message(encoded_msg, signature=signature)
-
-            # Verify recovered address matches payer
-            is_valid = recovered_address.lower() == payer.lower()
-
-            return is_valid
-
+            return recovered_address.lower() == payer.lower()
         except Exception as e:
             logger.exception("Signature verification error: %s", e)
             return False
 
-    def _load_nonce_cache(self) -> Dict[str, int]:
-        """Load nonce cache from disk (persistent storage)"""
-        try:
-            if self.nonce_storage_path.exists():
-                with open(self.nonce_storage_path, 'r') as f:
-                    cache = json.load(f)
-                    # Clean up old nonces on load
-                    current_time = int(time.time())
-                    cutoff_time = current_time - 3600  # 1 hour ago
-                    cleaned_cache = {
-                        k: v for k, v in cache.items()
-                        if v >= cutoff_time
-                    }
-                    logger.info(
-                        "Loaded %d nonces from cache (%d expired, %d active)",
-                        len(cache), len(cache) - len(cleaned_cache), len(cleaned_cache)
-                    )
-                    return cleaned_cache
-            return {}
-        except Exception as e:
-            logger.warning("Failed to load nonce cache, starting fresh: %s", e)
-            return {}
-
-    def _save_nonce_cache(self):
-        """Save nonce cache to disk (persistent storage)"""
-        try:
-            # Ensure directory exists
-            self.nonce_storage_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Write atomically
-            tmp_path = self.nonce_storage_path.with_suffix('.tmp')
-            with open(tmp_path, 'w') as f:
-                json.dump(self.nonce_cache, f, indent=2)
-            tmp_path.replace(self.nonce_storage_path)
-        except Exception as e:
-            logger.error("Failed to save nonce cache: %s", e)
-
-    def _is_nonce_used(self, payer: str, nonce: str) -> bool:
-        """Check if nonce has been used (replay attack prevention)"""
-        key = f"{payer.lower()}:{nonce}"
-
-        # Cleanup old nonces periodically
-        if time.time() - self.last_cleanup > self.cache_cleanup_interval:
-            self._cleanup_old_nonces()
-
-        return key in self.nonce_cache
-
-    def _mark_nonce_used(self, payer: str, nonce: str, timestamp: int):
-        """Mark nonce as used and persist to disk"""
-        key = f"{payer.lower()}:{nonce}"
-        self.nonce_cache[key] = timestamp
-
-        # Save to disk (survives restart)
-        self._save_nonce_cache()
-
-    def _cleanup_old_nonces(self):
-        """Remove nonces older than 1 hour"""
-        current_time = int(time.time())
-        cutoff_time = current_time - 3600  # 1 hour ago
-
-        old_nonces = [
-            key for key, timestamp in self.nonce_cache.items()
-            if timestamp < cutoff_time
-        ]
-
-        for key in old_nonces:
-            del self.nonce_cache[key]
-
-        self.last_cleanup = current_time
-
-        # Save cleaned cache to disk
-        if old_nonces:
-            self._save_nonce_cache()
-            logger.info("Cleaned up %d old nonces, %d remain", len(old_nonces), len(self.nonce_cache))
-
-
-class SimplePaymentVerifier:
-    """
-    Simplified payment verifier for testing/development
-
-    Only validates amount and basic fields, skips signature verification.
-    Use PaymentVerifier for production.
-    """
-
-    def __init__(self, backend_address: str, usdc_address: str):
-        self.backend_address = backend_address
-        self.usdc_address = usdc_address
-
-    def verify_payment(
+    def settle_payment(
         self,
         payment_header: str,
-        payer_address: Optional[str],
-        required_amount: int,
-        max_age_seconds: int = 300
-    ) -> PaymentDetails:
-        """Simple payment verification for testing"""
-        try:
-            # Parse simple format: token=...,amount=...,signature=...
-            parts = {}
-            for item in payment_header.split(','):
-                if '=' in item:
-                    key, value = item.split('=', 1)
-                    parts[key.strip().lower()] = value.strip()
+        payment_requirements: dict,
+    ) -> Optional[Dict]:
+        """No-op settlement for local EIP-712 mode (no facilitator)."""
+        logger.info("Local EIP-712 mode: settlement skipped (no facilitator)")
+        return {"success": True, "transaction": None}
 
-            amount = int(parts.get('amount', 0)) if parts.get('amount') else None
 
-            if amount is None or amount != required_amount:
-                return PaymentDetails(
-                    payer=payer_address or "",
-                    amount_units=amount or 0,
-                    asset=self.usdc_address,
-                    pay_to=self.backend_address,
-                    timestamp=int(time.time()),
-                    nonce="",
-                    signature=parts.get('signature', ''),
-                    is_valid=False
-                )
-
-            return PaymentDetails(
-                payer=payer_address or "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-                amount_units=amount,
-                asset=self.usdc_address,
-                pay_to=self.backend_address,
-                timestamp=int(time.time()),
-                nonce=parts.get('token', ''),
-                signature=parts.get('signature', ''),
-                is_valid=True
-            )
-
-        except Exception as e:
-            logger.exception("Simple payment verification error: %s", e)
-            return PaymentDetails(
-                payer="", amount_units=0, asset="", pay_to="",
-                timestamp=0, nonce="", signature="", is_valid=False
-            )

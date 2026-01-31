@@ -242,7 +242,7 @@ GET /health
 ```json
 {
   "status": "healthy",
-  "zkengine": "operational",
+  "jolt_atlas": "operational",
   "blockchain": "connected"
 }
 ```

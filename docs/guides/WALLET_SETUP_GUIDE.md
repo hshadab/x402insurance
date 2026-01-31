@@ -255,7 +255,7 @@ python server.py
 You should see:
 
 ```
-✅ zkEngine binary found at ./zkengine/fraud_detector
+✅ Jolt Atlas binary found at ./jolt-atlas/jolt_claims_prover
 ✅ Blockchain initialized with wallet: 0x742d35Cc...
 ✅ x402 middleware enabled for /insure endpoint
 ```
@@ -279,7 +279,7 @@ Should return:
 ```json
 {
   "status": "healthy",
-  "zkengine": "operational",
+  "jolt_atlas": "operational",
   "blockchain": "connected"
 }
 ```
@@ -373,7 +373,7 @@ Before going live, verify:
 After wallet setup is complete:
 
 1. ✅ **x402 payments** - Working with real middleware
-2. ✅ **zkEngine proofs** - Working with real Nova/Arecibo
+2. ✅ **Jolt Atlas proofs** - Working with real SNARK proofs over ONNX inference
 3. ✅ **USDC refunds** - Now working with real blockchain!
 
 Your insurance service is now **fully functional** with:
