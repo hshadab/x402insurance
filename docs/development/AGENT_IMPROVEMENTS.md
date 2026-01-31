@@ -258,7 +258,7 @@ From the comprehensive agent discovery analysis:
 All changes are backward-compatible. No breaking changes to existing API.
 
 **Modified Files:**
-- `server.py` - Added idempotency, claim status endpoint, 429 handler, agent card metadata
+- `blueprints/policies.py`, `blueprints/claims.py` - Added idempotency, claim status endpoint, 429 handler, agent card metadata
 - `AGENT_DISCOVERY.md` - Added Quick Start section + Error Handling guide
 
 **New Endpoints:**

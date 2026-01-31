@@ -40,7 +40,7 @@ This directory contains CI/CD workflows for automated testing and security check
 ### 🤷 You can disable if:
 - You're the only developer
 - You manually review code before committing
-- Render deployment is working fine
+- App Runner deployment is working fine
 - You don't need automated testing right now
 
 ## How to Disable CI/CD

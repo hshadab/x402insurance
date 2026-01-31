@@ -77,7 +77,7 @@ for attempt in range(30):  # Poll for up to 60 seconds
 ```python
 # Install: pip install redis rq
 
-# server.py
+# app.py / blueprints
 from redis import Redis
 from rq import Queue
 

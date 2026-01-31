@@ -272,10 +272,6 @@ docker build -f Dockerfile.dashboard -t x402-dashboard .
 docker run -p 8000:8000 x402-dashboard
 ```
 
-### Render (Dashboard Only — Legacy)
-
-`render.yaml` is configured to deploy the dashboard via `dashboard_server.py`.
-Set `AGENTCORE_SERVICE_URL` to point to the AgentCore service.
 
 ## API Endpoints
 

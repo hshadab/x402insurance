@@ -49,7 +49,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │              x402 INSURANCE SERVICE                              │
 │                                                                   │
-│  Payment Verification (server.py lines 978-983):                │
+│  Payment Verification (blueprints/policies.py):                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ payment_verifier.verify_payment(                          │  │
 │  │   payment_header=header,                                 │  │
@@ -331,10 +331,10 @@ payment_verifier.py (414 lines)
 ├── Exports: PaymentVerifier, SimplePaymentVerifier, PaymentDetails
 └── Uses: Python 3.7+, type hints
 
-server.py (1623 lines)
-├── Imports: payment_verifier
-├── Uses: PaymentVerifier / SimplePaymentVerifier (lines 119-129)
-├── Calls: verify_payment() (lines 978, 1168)
+blueprints/policies.py
+├── Imports: payment_verifier from extensions
+├── Uses: PaymentVerifier / FacilitatorPaymentVerifier
+├── Calls: verify_payment() in /insure and /renew handlers
 └── Handles: 402 responses, payment validation, policy creation
 
 config.py

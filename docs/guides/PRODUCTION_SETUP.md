@@ -3,7 +3,7 @@
 ## Architecture
 
 - **Primary service**: AWS Bedrock AgentCore (`agentcore_agent.py`, port 8080)
-- **Dashboard**: App Runner or Render (`dashboard_server.py`, port 8000, read-only)
+- **Dashboard**: AWS App Runner via ECR (`dashboard_server.py`, port 8000, read-only)
 
 ## Prerequisites
 

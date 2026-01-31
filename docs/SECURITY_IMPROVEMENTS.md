@@ -125,7 +125,7 @@ CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
 
 ### 5. Configurable Rate Limits
 
-**Issue**: Rate limits were hardcoded in server.py.
+**Issue**: Rate limits were hardcoded in the application code.
 
 **Fix**: Moved all rate limits to configuration files.
 

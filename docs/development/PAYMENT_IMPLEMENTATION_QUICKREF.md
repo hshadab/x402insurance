@@ -15,8 +15,8 @@
 | File | Purpose | Status |
 |------|---------|--------|
 | `auth/payment_verifier.py` | EIP-712 signature verification | ✅ Production |
-| `server.py` lines 949-995 | POST /insure payment handling | ✅ Production |
-| `server.py` lines 1141-1182 | POST /renew payment handling | ✅ Production |
+| `blueprints/policies.py` | POST /insure payment handling | ✅ Production |
+| `blueprints/policies.py` | POST /renew payment handling | ✅ Production |
 | `config.py` | PAYMENT_VERIFICATION_MODE switch | ✅ Production |
 | `tests/unit/test_payment_verifier.py` | Unit tests (minimal) | ⚠️ Limited |
 

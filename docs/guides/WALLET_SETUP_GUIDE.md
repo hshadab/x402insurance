@@ -245,11 +245,11 @@ Restart the server to use your new wallet:
 
 ```bash
 # Kill old server
-pkill -f "python server.py"
+pkill -f "python agentcore_agent.py"
 
 # Start with new wallet
 source venv/bin/activate
-python server.py
+python agentcore_agent.py
 ```
 
 You should see:
@@ -392,8 +392,8 @@ Ready to deploy! 🚀
 python setup_wallet.py
 
 # Restart server
-pkill -f "python server.py"
-source venv/bin/activate && python server.py
+pkill -f "python agentcore_agent.py"
+source venv/bin/activate && python agentcore_agent.py
 
 # Check health
 curl http://localhost:8000/health

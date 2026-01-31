@@ -5,7 +5,7 @@
 x402 Insurance uses a two-tier deployment:
 
 1. **AWS Bedrock AgentCore** (primary) — runs the full insurance service on port 8080
-2. **App Runner / Render** (dashboard) — serves a read-only monitoring dashboard on port 8000
+2. **AWS App Runner** (dashboard) — serves a read-only monitoring dashboard on port 8000 via ECR
 
 ## AWS Deployment (Recommended)
 
@@ -84,11 +84,6 @@ Services:
 - `postgres` — PostgreSQL database
 - `redis` — Rate limiting and task queue
 
-## Render (Dashboard Only — Legacy)
-
-`render.yaml` deploys the dashboard via `dashboard_server.py`. This is suitable for hosting the public-facing dashboard but does not run the full service.
-
-Set `AGENTCORE_SERVICE_URL` in the Render dashboard to point to the AgentCore service.
 
 ## Blockchain Costs (Base Mainnet)
 
