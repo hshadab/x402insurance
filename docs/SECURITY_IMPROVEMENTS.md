@@ -228,6 +228,15 @@ CHAIN_ID=84532
 
 ## Changelog
 
+**2026-01-31 (v2.3.1)**:
+- **SSRF Prevention**: `merchant_url` is now validated against private IPs, loopback addresses, link-local ranges, AWS metadata endpoints, and non-HTTP schemes before server-side re-fetch
+- **Claim auth before policy lock**: Payment authentication now runs before `claim_policy()` to prevent unnecessary policy locking on auth failure
+- **Server verification fix**: Fixed bug where server-side verification always returned `True` regardless of server response status
+- **Custom blockchain exceptions**: Replaced bare `Exception` with `InsufficientBalanceError` and `RefundError`
+- **Double-lock fix**: JSON file backend no longer acquires shared locks inside exclusive lock sections
+- **Claim service extraction**: Claim processing logic extracted to `services/claim_service.py` to eliminate duplication
+- Removed stale files: `server.py`, `render.yaml`, `.renderignore`, `render.yaml.example`
+
 **2026-01-31 (v2.3.0)**:
 - Updated to x402 V2 facilitator-based payment flow (`PAYMENT-SIGNATURE` header)
 - Server-side fraud detection via merchant URL re-fetch

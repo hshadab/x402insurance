@@ -1,7 +1,13 @@
 # Future Improvements for Agent Adoption
 
 **Date:** 2025-11-08
-**Status:** Design Phase - Not Yet Implemented
+**Status:** PARTIALLY IMPLEMENTED (as of v2.3.0)
+
+> **Note:** Several items in this document have been implemented since it was written:
+> - **Async Proof Generation** — Implemented via Huey task queue + Redis (see `tasks/claim_processor.py`)
+> - **Policy Renewal** — Implemented as `POST /renew` (see `blueprints/policies.py`)
+>
+> The remaining items (Automatic Failure Detection, AgentKit Integration, Webhook Notifications) are still in the design phase.
 
 This document details 5 major improvements to make x402 Insurance easier for agents to discover and use.
 
@@ -533,7 +539,7 @@ class X402InsuranceClient:
         """Auto-discover service via A2A agent card"""
         if not base_url:
             # TODO: Query x402 Bazaar for insurance services
-            base_url = "https://x402insurance.onrender.com"
+            base_url = "https://4axkjkepdx.us-east-1.awsapprunner.com"
 
         async with httpx.AsyncClient() as client:
             card = await client.get(f"{base_url}/.well-known/agent-card.json")

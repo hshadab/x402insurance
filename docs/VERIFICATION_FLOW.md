@@ -28,9 +28,23 @@ Agent sends HTTP response data:
 
 Claim authentication is always required (x402 V2 payment via `PAYMENT-SIGNATURE` header).
 
-### 2. Atomic Policy Claim (Prevents Race Conditions)
+### 2. Payment Authentication (Before Policy Lock)
 
-Before any proof generation, the server atomically marks the policy as "claimed":
+The server verifies payment and ownership **before** locking the policy,
+avoiding unnecessary lock/unlock cycles on auth failure:
+
+```python
+# 1. Verify payment (no policy state change yet)
+payment_details = verifier.verify_payment(payment_header, ...)
+# 2. Verify ownership
+if payer != policy.agent_address: return 403
+# 3. NOW lock the policy atomically
+policy = database.claim_policy(policy_id)
+```
+
+### 3. Atomic Policy Claim (Prevents Race Conditions)
+
+After authentication, the server atomically marks the policy as "claimed":
 
 ```python
 policy = database.claim_policy(policy_id)
@@ -38,7 +52,7 @@ if policy is None:
     return error("Policy cannot be claimed")  # already claimed, expired, or not found
 ```
 
-### 3. Jolt Atlas Generates SNARK Proof (Off-Chain)
+### 4. Jolt Atlas Generates SNARK Proof (Off-Chain)
 
 #### Server-Side Re-fetch (v2.3.0)
 
@@ -90,7 +104,7 @@ Steps:
 - `model_hash`: SHA-256 of the ONNX model file
 - `proof_system`: `"jolt-atlas-snark"`
 
-### 4. Verify Proof (Off-Chain)
+### 5. Verify Proof (Off-Chain)
 
 Server verifies the proof **BEFORE** issuing refund:
 
@@ -109,7 +123,7 @@ Verification calls `jolt_claims_prover --verify <proof.json>` which:
 - Calls `snark.verify(&verifier_preprocessing, program_io, None)` — the real Jolt SNARK verifier
 - This is a **cryptographic verification**, not re-execution — the verifier checks polynomial commitments
 
-### 5. Check Failure Detected (Off-Chain)
+### 6. Check Failure Detected (Off-Chain)
 
 ```python
 is_failure = public_inputs[0]
@@ -118,7 +132,7 @@ if is_failure != 1:
     return error("No failure detected in HTTP response")  # REJECT
 ```
 
-### 6. Issue Refund (On-Chain) -- BEFORE Persisting Claim
+### 7. Issue Refund (On-Chain) -- BEFORE Persisting Claim
 
 **ONLY IF** verification passed and failure detected:
 
@@ -133,7 +147,7 @@ except Exception as e:
     return error("Refund failed")
 ```
 
-### 7. Persist Claim Record (Database)
+### 8. Persist Claim Record (Database)
 
 Only after refund succeeds:
 
@@ -172,6 +186,7 @@ its SHA-256 hash is embedded in every proof for auditability.
 6. **Payment Signature Verification** -- `FacilitatorPaymentVerifier` calls x402.org
 7. **Nonce Replay Prevention** -- Database-backed nonce storage
 8. **Claim Authentication** -- Always required (x402 V2 payment)
+9. **SSRF Prevention** -- `merchant_url` validated against private/internal addresses
 
 ## Code References
 
@@ -181,5 +196,6 @@ its SHA-256 hash is embedded in every proof for auditability.
 - **ONNX model**: `models/claim_classifier.onnx` (trained by `models/train_claim_model.py`)
 - **Rust prover**: `jolt-prover/src/main.rs` (loads ONNX via tract, builds SNARK commitment)
 - **Refund**: `blockchain.py` `_send_refund_transaction()` -> web3 ERC-20 transfer
+- **Claim service**: `services/claim_service.py` (shared processing logic)
 - **Claims flow**: `blueprints/claims.py`
 - **Verify endpoint**: `blueprints/verify.py`

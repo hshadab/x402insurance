@@ -138,8 +138,19 @@ class JSONFileBackend:
             os.fsync(tf.fileno())
         os.replace(tmp_path, path)
 
+    def _load_json_raw(self, file_path: Path) -> Dict:
+        """Load JSON without acquiring any lock (caller must hold lock if needed)."""
+        if not file_path.exists():
+            return {}
+        try:
+            with open(file_path, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            logger.error("Corrupted JSON in %s; returning empty dict", file_path)
+            return {}
+
     def _load_json(self, file_path: Path) -> Dict:
-        """Load JSON with file locking"""
+        """Load JSON with a shared file lock (for standalone reads)."""
         if not file_path.exists():
             return {}
         try:
@@ -174,7 +185,7 @@ class JSONFileBackend:
             lock_fd = None
             try:
                 lock_fd, _ = self._acquire_lock(self.policies_file)
-                policies = self._load_json(self.policies_file)
+                policies = self._load_json_raw(self.policies_file)
                 policies[policy_id] = policy_data
                 self._atomic_write(self.policies_file, json.dumps(policies, indent=2, default=str))
             finally:
@@ -193,7 +204,7 @@ class JSONFileBackend:
             lock_fd = None
             try:
                 lock_fd, _ = self._acquire_lock(self.policies_file)
-                policies = self._load_json(self.policies_file)
+                policies = self._load_json_raw(self.policies_file)
                 if policy_id not in policies:
                     return False
                 policies[policy_id].update(updates)
@@ -210,7 +221,7 @@ class JSONFileBackend:
         lock_fd = None
         try:
             lock_fd, _ = self._acquire_lock(self.policies_file)
-            policies = self._load_json(self.policies_file)
+            policies = self._load_json_raw(self.policies_file)
             policy = policies.get(policy_id)
             if not policy:
                 return None
@@ -260,7 +271,7 @@ class JSONFileBackend:
             lock_fd = None
             try:
                 lock_fd, _ = self._acquire_lock(self.claims_file)
-                claims = self._load_json(self.claims_file)
+                claims = self._load_json_raw(self.claims_file)
                 claims[claim_id] = claim_data
                 self._atomic_write(self.claims_file, json.dumps(claims, indent=2, default=str))
             finally:
@@ -279,7 +290,7 @@ class JSONFileBackend:
             lock_fd = None
             try:
                 lock_fd, _ = self._acquire_lock(self.claims_file)
-                claims = self._load_json(self.claims_file)
+                claims = self._load_json_raw(self.claims_file)
                 if claim_id not in claims:
                     return False
                 claims[claim_id].update(updates)
@@ -316,7 +327,7 @@ class JSONFileBackend:
         lock_fd = None
         try:
             lock_fd, _ = self._acquire_lock(self.nonces_file)
-            cache = self._load_json(self.nonces_file)
+            cache = self._load_json_raw(self.nonces_file)
             key = f"{payer.lower()}:{nonce}"
             cache[key] = timestamp
             self._atomic_write(self.nonces_file, json.dumps(cache, indent=2, default=str))
@@ -327,7 +338,7 @@ class JSONFileBackend:
         lock_fd = None
         try:
             lock_fd, _ = self._acquire_lock(self.nonces_file)
-            cache = self._load_json(self.nonces_file)
+            cache = self._load_json_raw(self.nonces_file)
             cutoff = int(time.time()) - max_age_seconds
             old = [k for k, v in cache.items() if v < cutoff]
             for k in old:
@@ -343,7 +354,7 @@ class JSONFileBackend:
         lock_fd = None
         try:
             lock_fd, _ = self._acquire_lock(self.policies_file)
-            policies = self._load_json(self.policies_file)
+            policies = self._load_json_raw(self.policies_file)
             current_time = datetime.now(timezone.utc)
 
             expired_count = 0

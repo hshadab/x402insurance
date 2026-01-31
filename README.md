@@ -113,6 +113,8 @@ x402insurance/
 │     discovery.py          GET /, /.well-known/agent-card.json, /api/*
 │     health.py             GET /health, /ping, /metrics, /api/reserves, /invocations
 │     dashboard_health.py   Lightweight /health, /ping, /metrics (dashboard only)
+├── services/
+│     claim_service.py            Shared claim processing logic (proof + refund)
 ├── Core Services
 │     auth/payment_verifier.py    x402 V2 facilitator verification
 │     database.py                 JSONFileBackend (dev) | PostgreSQLBackend (prod)
@@ -325,10 +327,12 @@ but exercise all real internal code paths.
 - **Claim authentication** always required (x402 payment)
 - **Payment verification** via x402.org facilitator (signature, nonce, amount)
 - **Server-side fraud detection** via independent merchant URL re-fetch
+- **SSRF prevention** — `merchant_url` validated against private IPs, loopback, and internal hostnames
 - **Nonce replay prevention** via database-backed nonce storage
 - **Real blockchain refunds** — no mock fallbacks
 - **Real SNARK proofs** — Jolt Atlas binary required, no mock mode
 - **Atomic database operations** — `claim_policy()` prevents double-claiming
+- **Custom blockchain exceptions** — `InsufficientBalanceError` and `RefundError` for precise error handling
 
 ## Support
 

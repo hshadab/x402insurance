@@ -108,23 +108,15 @@ class DevelopmentConfig(Config):
     DEBUG = True
     LOG_LEVEL = "DEBUG"
 
-    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
-
 
 class ProductionConfig(Config):
     """Production configuration"""
 
     ENV = "production"
     DEBUG = False
-    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-    BASE_RPC_URL = os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
-    USDC_CONTRACT_ADDRESS = os.getenv(
-        "USDC_CONTRACT_ADDRESS",
-        "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # Base Mainnet USDC
-    )
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "")
-    CHAIN_ID = int(os.getenv("CHAIN_ID", 8453))  # Base Mainnet
+    # Production overrides only where they differ from base Config
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "")  # Empty = no CORS (locked down)
     SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "production")
     SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.2"))
 

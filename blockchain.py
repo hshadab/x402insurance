@@ -36,6 +36,16 @@ ERC20_ABI = [
 ]
 
 
+class InsufficientBalanceError(Exception):
+    """Raised when wallet has insufficient USDC or ETH balance."""
+    pass
+
+
+class RefundError(Exception):
+    """Raised when a refund transaction fails after retries."""
+    pass
+
+
 class BlockchainClient:
     def __init__(
         self,
@@ -109,7 +119,7 @@ class BlockchainClient:
         # Check balance before attempting transfer
         balance = self.get_balance()
         if balance < amount:
-            raise Exception(
+            raise InsufficientBalanceError(
                 f"Insufficient USDC balance: have {balance} units, need {amount} units"
             )
 
@@ -117,7 +127,7 @@ class BlockchainClient:
         eth_balance = self.get_eth_balance()
         min_eth_balance = self.w3.to_wei(0.001, 'ether')  # Minimum 0.001 ETH for gas
         if eth_balance < min_eth_balance:
-            raise Exception(
+            raise InsufficientBalanceError(
                 f"Insufficient ETH for gas: have {self.w3.from_wei(eth_balance, 'ether')} ETH"
             )
 
@@ -141,7 +151,7 @@ class BlockchainClient:
             except ContractLogicError as e:
                 # Contract error - don't retry
                 self.logger.error("Contract logic error: %s", e)
-                raise Exception(f"USDC transfer failed: {str(e)}")
+                raise RefundError(f"USDC transfer failed: {str(e)}")
 
             except Exception as e:
                 last_error = e
@@ -149,7 +159,7 @@ class BlockchainClient:
                 continue
 
         # All retries failed
-        raise Exception(f"Refund failed after {self.max_retries} attempts: {last_error}")
+        raise RefundError(f"Refund failed after {self.max_retries} attempts: {last_error}")
 
     def _send_refund_transaction(self, to_address: str, amount: int) -> str:
         """Internal method to send refund transaction"""
@@ -199,6 +209,6 @@ class BlockchainClient:
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.confirmation_timeout)
 
         if receipt.status != 1:
-            raise Exception(f"Transaction reverted: {tx_hash.hex()}")
+            raise RefundError(f"Transaction reverted: {tx_hash.hex()}")
 
         return tx_hash.hex()

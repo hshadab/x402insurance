@@ -16,14 +16,6 @@ from config import get_config
 load_dotenv()
 
 
-class DummyLimiter:
-    """No-op rate limiter for when rate limiting is disabled."""
-    def limit(self, *args, **kwargs):
-        def decorator(f):
-            return f
-        return decorator
-
-
 def create_app(env=None):
     """Create and configure the Flask application."""
     cfg = get_config(env)
@@ -84,7 +76,7 @@ def create_app(env=None):
         )
         logger.info("Rate limiting enabled with default: %s", cfg.RATE_LIMIT_DEFAULT)
     else:
-        ext.limiter = DummyLimiter()
+        ext.limiter = ext._NoOpLimiter()
         logger.warning("Rate limiting DISABLED")
 
     # Startup validation: chain ID vs RPC URL sanity check

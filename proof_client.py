@@ -170,6 +170,7 @@ class JoltProofClient:
             "proof_system": p_data.get("proof_system", "jolt-atlas-snark"),
         }
 
+        tmpfile = None
         try:
             with tempfile.NamedTemporaryFile(
                 mode='w', suffix='.json', delete=False
@@ -190,8 +191,6 @@ class JoltProofClient:
                 env=env
             )
 
-            os.unlink(tmpfile)
-
             if result.returncode != 0:
                 self.logger.error("Jolt verify failed: %s", result.stderr)
                 return False
@@ -208,18 +207,20 @@ class JoltProofClient:
 
         except Exception as e:
             self.logger.error("Proof verification error: %s", e)
-            try:
-                os.unlink(tmpfile)
-            except Exception:
-                pass
             return False
+        finally:
+            if tmpfile:
+                try:
+                    os.unlink(tmpfile)
+                except OSError:
+                    pass
 
     # Payout cap check (called by verify endpoint)
     def check_payout_cap(self, public_inputs: List[int]) -> bool:
         """Check that payout does not exceed max coverage."""
-        max_payout = int(
-            float(os.environ.get("MAX_COVERAGE_USDC", "0.1")) * 1_000_000
-        )
+        import extensions as ext
+        max_coverage = ext.MAX_COVERAGE if ext.MAX_COVERAGE is not None else 0.1
+        max_payout = int(max_coverage * 1_000_000)
         payout_amount = public_inputs[3] if len(public_inputs) > 3 else 0
         if payout_amount > max_payout:
             self.logger.error(

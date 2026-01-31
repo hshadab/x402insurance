@@ -2,6 +2,7 @@
 
 **Date:** 2025-11-08
 **Version:** v2.1.0 - Agent-Friendly Enhancements
+**Status:** IMPLEMENTED — All improvements below are live in v2.3.0.
 
 ---
 

@@ -27,8 +27,6 @@ def insure():
 
     if not merchant_url or not coverage_amount:
         return jsonify({"error": "Missing merchant_url or coverage_amount"}), 400
-    if coverage_amount is None:
-        return jsonify({"error": "coverage_amount required"}), 400
     if coverage_amount <= 0:
         return jsonify({"error": "Coverage amount must be positive"}), 400
     if coverage_amount > ext.MAX_COVERAGE:

@@ -8,7 +8,7 @@ import logging
 import httpx
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify, g, current_app
-from utils import to_micro, iso_utc_now, parse_utc
+from utils import to_micro, iso_utc_now, parse_utc, validate_merchant_url
 import extensions as ext
 
 claims_bp = Blueprint('claims', __name__)
@@ -17,93 +17,9 @@ logger = logging.getLogger("x402insurance")
 
 def process_claim_async(claim_id: str):
     """Background worker function to process claim asynchronously."""
+    from services.claim_service import process_claim
     try:
-        logger.info("Starting async claim processing: %s", claim_id)
-
-        claim = ext.database.get_claim(claim_id)
-        if not claim:
-            logger.error("Claim not found for async processing: %s", claim_id)
-            return
-
-        policy = ext.database.get_policy(claim['policy_id'])
-        if not policy:
-            logger.error("Policy not found for claim: %s", claim_id)
-            ext.database.update_claim(claim_id, {
-                'status': 'failed',
-                'error': 'Policy not found',
-                'failed_at': iso_utc_now(),
-            })
-            return
-
-        http_response = claim.get('http_response', {})
-
-        coverage_units = claim.get('coverage_amount_units') or to_micro(claim.get('coverage_amount'))
-        logger.info("Generating proof for claim: %s", claim_id)
-        proof_hex, public_inputs, gen_time_ms = ext.proof_client.generate_proof(
-            http_status=http_response["status"],
-            http_body=http_response["body"],
-            http_headers=http_response.get("headers", {}),
-            coverage_amount_units=coverage_units,
-        )
-
-        is_valid = ext.proof_client.verify_proof(proof_hex, public_inputs)
-        if not is_valid:
-            logger.error("Proof verification failed for claim: %s", claim_id)
-            ext.database.update_claim(claim_id, {
-                'status': 'failed',
-                'error': 'Generated proof is invalid',
-                'failed_at': iso_utc_now(),
-            })
-            return
-
-        is_failure = public_inputs[0]
-        if is_failure != 1:
-            logger.warning("No failure detected for claim: %s", claim_id)
-            ext.database.update_claim(claim_id, {
-                'status': 'failed',
-                'error': 'No failure detected in HTTP response',
-                'failed_at': iso_utc_now(),
-            })
-            return
-
-        # Phase 3: Issue refund BEFORE persisting success
-        logger.info("Issuing refund for claim: %s", claim_id)
-        try:
-            refund_tx_hash = ext.blockchain.issue_refund(
-                to_address=claim['agent_address'],
-                amount=claim['coverage_amount_units']
-            )
-        except Exception as refund_err:
-            logger.error("Refund failed for claim %s: %s", claim_id, refund_err)
-            ext.database.update_claim(claim_id, {
-                'status': 'refund_failed',
-                'error': str(refund_err),
-                'proof': proof_hex,
-                'public_inputs': public_inputs,
-                'proof_generation_time_ms': gen_time_ms,
-                'verification_result': True,
-                'failed_at': iso_utc_now(),
-            })
-            return
-
-        # Refund succeeded — now persist claim as paid
-        ext.database.update_claim(claim_id, {
-            'proof': proof_hex,
-            'public_inputs': public_inputs,
-            'proof_generation_time_ms': gen_time_ms,
-            'verification_result': True,
-            'payout_amount': claim['coverage_amount'],
-            'payout_amount_units': claim['coverage_amount_units'],
-            'refund_tx_hash': refund_tx_hash,
-            'recipient_address': claim['agent_address'],
-            'status': 'paid',
-            'paid_at': iso_utc_now(),
-        })
-
-        ext.database.update_policy(claim['policy_id'], {'status': 'claimed'})
-
-        logger.info("Claim processed successfully: %s, refund TX: %s", claim_id, refund_tx_hash)
-
+        process_claim(claim_id)
     except Exception as e:
         logger.error("Error processing claim async: %s, error: %s", claim_id, str(e), exc_info=True)
         try:
@@ -144,6 +60,10 @@ def claim():
     merchant_url = data.get('merchant_url')
     if not merchant_url:
         return jsonify({"error": "Missing merchant_url (required for server-side verification)"}), 400
+    try:
+        validate_merchant_url(merchant_url)
+    except ValueError as e:
+        return jsonify({"error": f"Invalid merchant_url: {e}"}), 400
 
     # Server-side re-fetch for fraud detection
     server_verified = False
@@ -156,9 +76,9 @@ def claim():
 
         if agent_claims_failure and server_sees_success:
             return jsonify({
-                "error": "fraud_suspected",
-                "message": "Server-side verification failed: merchant responded successfully "
-                           "but agent reported failure",
+                "error": "Server-side verification failed: merchant responded successfully "
+                         "but agent reported failure",
+                "error_code": "fraud_suspected",
                 "server_http_status": server_http_status,
                 "agent_http_status": http_status,
             }), 403
@@ -166,7 +86,8 @@ def claim():
         if server_http_status >= 500:
             server_verified = True
         else:
-            server_verified = True
+            # Server did not see a 5xx — verification inconclusive
+            server_verified = False
     except (httpx.RequestError, httpx.TimeoutException) as fetch_err:
         logger.warning("Server-side re-fetch failed for %s: %s", merchant_url, fetch_err)
         server_verified = False
@@ -190,29 +111,14 @@ def claim():
                 "note": "This claim was already processed (idempotent response)"
             }), 200
 
-    # Phase 2: Atomic claim — use claim_policy to prevent race conditions
-    policy = ext.database.claim_policy(policy_id)
-    if policy is None:
-        # Could be not found, not active, or expired — check why
-        raw_policy = ext.database.get_policy(policy_id)
-        if not raw_policy:
-            return jsonify({"error": "Policy not found"}), 404
-        if raw_policy.get("status") != "active":
-            return jsonify({"error": f"Policy is not active: {raw_policy['status']}"}), 409
-        if parse_utc(raw_policy.get("expires_at", "")) < datetime.now(timezone.utc):
-            return jsonify({"error": "Policy expired"}), 400
-        # Fallback
-        return jsonify({"error": "Policy cannot be claimed"}), 409
-
-    # Claim authentication (always required)
+    # Authenticate payment BEFORE locking the policy to avoid needless lock/unlock
+    agent_address = None
     if cfg.REQUIRE_CLAIM_AUTHENTICATION:
         payment_header = getattr(g, 'payment_header', None)
         payer_header = getattr(g, 'payer_header', None)
         claim_fee_units = 100  # anti-spam fee
 
         if not payment_header:
-            # Revert the claim status back to active
-            ext.database.update_policy(policy_id, {'status': 'active'})
             required = {
                 "x402Version": 2,
                 "accepts": [{
@@ -234,18 +140,33 @@ def claim():
             required_amount=claim_fee_units, max_age_seconds=cfg.PAYMENT_MAX_AGE_SECONDS
         )
         if not payment_details.is_valid:
-            ext.database.update_policy(policy_id, {'status': 'active'})
             logger.warning("Claim payment verification failed for policy_id=%s", policy_id)
             return jsonify({"error": "Payment verification failed"}), 402
 
         agent_address = payment_details.payer
-        if agent_address.lower() != policy["agent_address"].lower():
-            ext.database.update_policy(policy_id, {'status': 'active'})
+
+        # Verify ownership before locking the policy
+        raw_policy = ext.database.get_policy(policy_id)
+        if not raw_policy:
+            return jsonify({"error": "Policy not found"}), 404
+        if agent_address.lower() != raw_policy["agent_address"].lower():
             return jsonify({
                 "error": "Unauthorized: You can only claim your own policies",
-                "policy_owner": policy["agent_address"],
+                "policy_owner": raw_policy["agent_address"],
                 "claim_submitter": agent_address
             }), 403
+
+    # Atomic claim — lock the policy now that auth is verified
+    policy = ext.database.claim_policy(policy_id)
+    if policy is None:
+        raw_policy = ext.database.get_policy(policy_id)
+        if not raw_policy:
+            return jsonify({"error": "Policy not found"}), 404
+        if raw_policy.get("status") != "active":
+            return jsonify({"error": f"Policy is not active: {raw_policy['status']}"}), 409
+        if parse_utc(raw_policy.get("expires_at", "")) < datetime.now(timezone.utc):
+            return jsonify({"error": "Policy expired"}), 400
+        return jsonify({"error": "Policy cannot be claimed"}), 409
 
     # Async mode
     async_mode = request.args.get('async', 'false').lower() in ('true', '1', 'yes')
