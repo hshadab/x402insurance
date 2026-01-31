@@ -1,202 +1,142 @@
 # Deployment Checklist
 
-Use this checklist to ensure a smooth deployment to Render.
+Use this checklist for deploying or redeploying the x402 Insurance service.
+
+## Architecture
+
+| Component | Platform | Entry Point | Port |
+|-----------|----------|-------------|------|
+| **Primary service** | AWS Bedrock AgentCore | `agentcore_agent.py` | 8080 |
+| **Dashboard** | AWS App Runner (ECR) | `dashboard_server.py` | 8000 |
 
 ## Pre-Deployment
 
+- [ ] **Verify AWS credentials**
+  ```bash
+  aws sts get-caller-identity  # Account: 851725214068
+  ```
+
+- [ ] **Verify wallet has funds** (for AgentCore service)
+  - [ ] ETH for gas: ~0.005 ETH minimum
+  - [ ] USDC for refunds: based on expected coverage
+  - [ ] Check balance at https://basescan.org
+
 - [ ] **Test locally**
   ```bash
-  source venv/bin/activate
-  python server.py
+  # Full service
+  python agentcore_agent.py
+
+  # Dashboard only
+  python dashboard_server.py
   # Test at http://localhost:8000
   ```
 
-- [ ] **Verify wallet has funds**
-  - [ ] ETH for gas: ~0.005 ETH minimum
-  - [ ] USDC for refunds: Based on expected coverage
-  - [ ] Check balance at https://basescan.org
+## AgentCore Deployment (Full Service)
 
-- [ ] **Get Alchemy API Key**
-  - [ ] Sign up at https://alchemy.com
-  - [ ] Create Base Mainnet app
-  - [ ] Copy API key for BASE_RPC_URL
-
-- [ ] **Prepare environment variables**
-  - [ ] BACKEND_WALLET_PRIVATE_KEY (from wallet)
-  - [ ] BACKEND_WALLET_ADDRESS (from wallet)
-  - [ ] BASE_RPC_URL (from Alchemy)
-
-## Git Repository Setup
-
-- [ ] **Initialize git (if not done)**
+- [ ] **Configure and deploy**
   ```bash
-  git init
+  agentcore configure -e agentcore_agent.py -r us-east-1
+  agentcore deploy
   ```
 
-- [ ] **Verify .gitignore is working**
+- [ ] **Set environment variables** in AgentCore configuration:
+  - `BACKEND_WALLET_PRIVATE_KEY` — funded Base Mainnet wallet
+  - `BACKEND_WALLET_ADDRESS` — corresponding address
+  - `BASE_RPC_URL` — Base Mainnet RPC endpoint
+  - `JOLT_BINARY_PATH` — path to Jolt Atlas prover binary
+  - `FACILITATOR_URL` — default: `https://x402.org/facilitator`
+
+## Dashboard Deployment (App Runner via ECR)
+
+- [ ] **Build the dashboard image**
   ```bash
-  git status
-  # .env should NOT appear in untracked files
+  docker build -f Dockerfile.dashboard -t x402-dashboard .
   ```
 
-- [ ] **Create repository on GitHub/GitLab**
-  - Go to GitHub.com → New Repository
-  - Name: x402insurance (or your choice)
-  - Set to Private (recommended for production)
-
-- [ ] **Push code**
+- [ ] **Test locally before pushing**
   ```bash
-  git add .
-  git commit -m "Initial commit - x402 Insurance Service"
-  git remote add origin https://github.com/YOUR_USERNAME/x402insurance.git
-  git push -u origin main
+  docker run --rm -p 8001:8000 x402-dashboard
+  curl http://localhost:8001/ping    # Should return {"status":"Healthy",...}
+  curl http://localhost:8001/health  # Should return {"status":"healthy","mode":"dashboard-readonly",...}
   ```
 
-## Render Setup
+- [ ] **Login to ECR**
+  ```bash
+  aws ecr get-login-password --region us-east-1 | \
+    docker login --username AWS --password-stdin 851725214068.dkr.ecr.us-east-1.amazonaws.com
+  ```
 
-- [ ] **Create Render account**
-  - Sign up at https://render.com
-  - Verify email
+- [ ] **Push to ECR**
+  ```bash
+  docker tag x402-dashboard 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+  docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+  ```
 
-- [ ] **Connect Git provider**
-  - Dashboard → Account Settings → Git Providers
-  - Connect GitHub/GitLab
+- [ ] **Trigger App Runner redeployment**
+  ```bash
+  aws apprunner start-deployment \
+    --service-arn arn:aws:apprunner:us-east-1:851725214068:service/x402insurance/a54c141ba18a4b59b2adfb21bff52730 \
+    --region us-east-1
+  ```
 
-- [ ] **Create new Web Service**
-  - Dashboard → New + → Web Service
-  - Select your repository
-  - Render will detect render.yaml automatically
-
-- [ ] **Configure environment variables in Render**
-  - Go to Environment tab
-  - Add these as **secret** environment variables:
-    - `BACKEND_WALLET_PRIVATE_KEY` = (your private key)
-    - `BACKEND_WALLET_ADDRESS` = (your wallet address)
-    - `BASE_RPC_URL` = https://base-mainnet.g.alchemy.com/v2/YOUR_KEY
-
-- [ ] **Review render.yaml settings**
-  - Region: Choose closest to your users
-  - Plan: Free tier for testing, Starter ($7) for production
-  - Branch: Ensure it matches your git branch (main/master)
-
-- [ ] **Deploy**
-  - Click "Create Web Service"
-  - Wait 10-15 minutes for first build
+- [ ] **Wait for deployment to complete**
+  ```bash
+  # Poll until status is RUNNING
+  aws apprunner describe-service \
+    --service-arn arn:aws:apprunner:us-east-1:851725214068:service/x402insurance/a54c141ba18a4b59b2adfb21bff52730 \
+    --region us-east-1 --query 'Service.Status' --output text
+  ```
 
 ## Post-Deployment Verification
 
-- [ ] **Check build logs**
-  - Verify Python dependencies installed
-  - Verify Rust installed
-  - Verify Jolt Atlas compiled successfully
-  - No error messages in logs
-
-- [ ] **Test health endpoint**
+- [ ] **Check dashboard health**
   ```bash
-  curl https://YOUR_APP_NAME.onrender.com/health
-  # Should return: {"status": "healthy", ...}
+  curl https://4axkjkepdx.us-east-1.awsapprunner.com/health
+  # Expected: {"status":"healthy","mode":"dashboard-readonly","checks":{"dashboard":{"status":"operational"}}}
   ```
 
-- [ ] **Test dashboard UI**
-  - Visit https://YOUR_APP_NAME.onrender.com/
-  - Dashboard should load
-  - Blockchain stats should show your wallet
+- [ ] **Check dashboard UI**
+  - Visit https://4axkjkepdx.us-east-1.awsapprunner.com/
+  - Title should show "NovNet x402 Insurance - Service Dashboard (Read-Only)"
 
-- [ ] **Test API info**
+- [ ] **Check agent discovery**
   ```bash
-  curl https://YOUR_APP_NAME.onrender.com/api
-  # Should return API documentation
+  curl https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known/agent-card.json
   ```
 
-## Functional Testing
-
-- [ ] **Create test policy (local)**
+- [ ] **Check API endpoints**
   ```bash
-  python test_micropayment.py
+  curl https://4axkjkepdx.us-east-1.awsapprunner.com/api
+  curl https://4axkjkepdx.us-east-1.awsapprunner.com/api/pricing
   ```
 
-- [ ] **Verify refund on blockchain**
-  - Check transaction on https://basescan.org
-  - Confirm USDC transfer occurred
-
-- [ ] **Monitor wallet balance**
-  - Check ETH balance (should decrease slightly for gas)
-  - Check USDC balance (should decrease by refund amount)
-
-## Production Readiness
-
-- [ ] **Set up monitoring**
-  - Enable email alerts in Render
-  - Monitor error rates
-  - Monitor response times
-
-- [ ] **Configure custom domain (optional)**
-  - Render Dashboard → Settings → Custom Domain
-  - Add your domain
-  - Update DNS settings
-
-- [ ] **SSL Certificate**
-  - Render automatically provisions SSL
-  - Verify https:// works
-
-- [ ] **Performance tuning**
-  - [ ] Adjust gunicorn workers if needed
-  - [ ] Consider upgrading plan for more resources
-  - [ ] Enable persistent disk for data/
-
-- [ ] **Security review**
-  - [ ] Verify .env not in git
-  - [ ] Verify private key stored securely
-  - [ ] Limit wallet funds to necessary amounts
-  - [ ] Set up wallet monitoring/alerts
-
-## Ongoing Maintenance
-
-- [ ] **Set up regular monitoring**
-  - Check Render logs daily
-  - Monitor wallet balance weekly
-  - Review claims/policies weekly
-
-- [ ] **Plan for scaling**
-  - Consider PostgreSQL when >1000 policies
-  - Consider Redis caching for high traffic
-  - Plan for wallet refills
-
-- [ ] **Security maintenance**
-  - Rotate private keys every 3-6 months
-  - Keep dependencies updated
-  - Monitor for security vulnerabilities
+- [ ] **Run unit tests**
+  ```bash
+  pytest tests/unit/ -v
+  ```
 
 ## Troubleshooting
 
-If deployment fails, check:
+### App Runner deployment rolls back
 
-1. **Build fails at Rust installation**
-   - Retry deployment (temporary network issue)
-   - Upgrade to paid plan (more resources)
+1. **Container crashes on startup** — check that `Dockerfile.dashboard` copies all required files (`utils.py`, `extensions.py`, `config.py`, `app.py`, `dashboard_server.py`, `blueprints/`, `static/`)
+2. **Health check fails** — App Runner uses `/ping` as the health check path; verify the container responds to it
+3. **ECR access denied** — verify the `AppRunnerECRAccessRole` IAM role has `ecr:GetDownloadUrlForLayer`, `ecr:BatchGetImage`, `ecr:GetAuthorizationToken`
 
-2. **Build fails at Jolt Atlas compilation**
-   - Check Render build logs for specific error
-   - Increase timeout in render.yaml
-   - Verify Jolt Atlas repo is accessible
+### Check deployment operation status
 
-3. **Service starts but health check fails**
-   - Check environment variables are set
-   - Verify private key format (should start with 0x)
-   - Check logs for Python errors
+```bash
+aws apprunner list-operations \
+  --service-arn arn:aws:apprunner:us-east-1:851725214068:service/x402insurance/a54c141ba18a4b59b2adfb21bff52730 \
+  --region us-east-1 --query 'OperationSummaryList[0]'
+```
 
-4. **Refunds fail**
-   - Verify wallet has ETH for gas
-   - Verify wallet has USDC for refunds
-   - Check Base Mainnet RPC is working
+## Key References
 
-## Support Resources
-
-- **Render Docs:** https://render.com/docs
-- **Render Community:** https://community.render.com
-- **Base Docs:** https://docs.base.org
-- **x402 Docs:** https://github.com/coinbase/x402
-
----
-
-**Ready?** Start with "Pre-Deployment" and work your way down!
+| Resource | Value |
+|----------|-------|
+| **App Runner Service ARN** | `arn:aws:apprunner:us-east-1:851725214068:service/x402insurance/a54c141ba18a4b59b2adfb21bff52730` |
+| **ECR Repository** | `851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard` |
+| **ECR Access Role** | `arn:aws:iam::851725214068:role/AppRunnerECRAccessRole` |
+| **Dashboard URL** | https://4axkjkepdx.us-east-1.awsapprunner.com |
+| **AgentCore ARN** | `arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo` |

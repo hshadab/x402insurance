@@ -9,7 +9,7 @@
 | Component | Entry Point | Port | Role |
 |-----------|-------------|------|------|
 | **AWS Bedrock AgentCore** | `agentcore_agent.py` | 8080 | Primary service — all insurance logic |
-| **AWS App Runner** | `dashboard_server.py` | 8000 | Read-only monitoring dashboard |
+| **AWS App Runner** | `dashboard_server.py` | 8000 | Read-only monitoring dashboard (ECR: `x402-insurance-dashboard`) |
 
 ## Live Deployment
 
@@ -17,6 +17,8 @@
 |---|---|
 | **AgentCore ARN** | `arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo` |
 | **Dashboard** | https://4axkjkepdx.us-east-1.awsapprunner.com |
+| **Dashboard ECR** | `851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard` |
+| **Dashboard Health** | Lightweight (`dashboard_health_bp`) — no blockchain/prover checks |
 | **Network** | Base Mainnet (Chain ID: 8453) |
 | **Database** | JSON backend (operational) |
 | **Payment Mode** | Facilitator (x402.org) |
@@ -65,8 +67,9 @@
 # Check health (AgentCore)
 curl http://localhost:8080/health | python3 -m json.tool
 
-# Check health (Dashboard)
+# Check health (Dashboard — lightweight, no subsystem checks)
 curl https://4axkjkepdx.us-east-1.awsapprunner.com/health
+# Returns: {"status":"healthy","mode":"dashboard-readonly","checks":{"dashboard":{"status":"operational"}}}
 
 # Run unit tests
 pytest tests/unit/ -v

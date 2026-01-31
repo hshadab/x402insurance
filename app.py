@@ -274,12 +274,21 @@ def create_dashboard_app(env=None):
         origins = [o.strip() for o in cfg.CORS_ORIGINS.split(',') if o.strip()]
         CORS(app, resources={r"/*": {"origins": origins}})
 
+    # Populate ext with config and constants so discovery_bp works
+    import extensions as ext
+    ext.config = cfg
+    ext.BACKEND_ADDRESS = cfg.BACKEND_WALLET_ADDRESS
+    ext.PREMIUM_PERCENTAGE = cfg.PREMIUM_PERCENTAGE
+    ext.MAX_COVERAGE = cfg.MAX_COVERAGE_USDC
+    ext.POLICY_DURATION = cfg.POLICY_DURATION_HOURS
+    ext.USDC_ADDRESS = cfg.USDC_CONTRACT_ADDRESS
+
     # Only register lightweight blueprints
     from blueprints.discovery import discovery_bp
-    from blueprints.health import health_bp
+    from blueprints.dashboard_health import dashboard_health_bp
 
     app.register_blueprint(discovery_bp)
-    app.register_blueprint(health_bp)
+    app.register_blueprint(dashboard_health_bp)
 
     logger.info("x402 Insurance Dashboard initialized (read-only mode)")
     logger.info("AgentCore service URL: %s", cfg.AGENTCORE_SERVICE_URL)

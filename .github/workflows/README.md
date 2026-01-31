@@ -18,7 +18,7 @@ This directory contains CI/CD workflows for automated testing and security check
 
 **When it runs:** On every push to main or pull request
 
-**Why tests fail:** Known issue with `eth_typing` package version conflict in test environment. This doesn't affect production - the app works fine on Render.
+**Why tests fail:** Known issue with `eth_typing` package version conflict in test environment. This doesn't affect production - the app works fine on App Runner and AgentCore.
 
 ### 2. `security-only.yml.disabled` - Lightweight Security (Optional)
 
@@ -67,7 +67,8 @@ mv .github/workflows/security-only.yml.disabled .github/workflows/security-only.
 
 ## Current Status
 
-**Render Deployment:** ✅ Working perfectly
+**App Runner Dashboard:** ✅ Deployed via ECR (`x402-insurance-dashboard`)
+**AgentCore Service:** ✅ Primary service on Bedrock AgentCore
 **CI/CD Tests:** ⚠️ Failing due to dependency conflicts (non-critical)
 **Security Checks:** ✅ Passing
 

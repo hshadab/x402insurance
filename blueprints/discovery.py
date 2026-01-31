@@ -81,15 +81,23 @@ def dashboard_data():
     limit = request.args.get('limit', 50, type=int)
     offset = request.args.get('offset', 0, type=int)
 
-    policies_dict = ext.database.get_all_policies(limit=limit, offset=offset)
-    claims_dict = ext.database.get_all_claims(limit=limit, offset=offset)
+    policies = []
+    claims = []
+    total_coverage = 0
+    total_policies = 0
+    claims_paid = 0
 
-    policies = list(policies_dict.values())
-    claims = list(claims_dict.values())
-
-    total_coverage = sum(p.get('coverage_amount', 0) for p in policies if isinstance(p, dict) and p.get('status') == 'active')
-    total_policies = len(policies)
-    claims_paid = sum(c.get('payout_amount', 0) for c in claims if isinstance(c, dict) and c.get('status') == 'paid')
+    if ext.database:
+        try:
+            policies_dict = ext.database.get_all_policies(limit=limit, offset=offset)
+            claims_dict = ext.database.get_all_claims(limit=limit, offset=offset)
+            policies = list(policies_dict.values())
+            claims = list(claims_dict.values())
+            total_coverage = sum(p.get('coverage_amount', 0) for p in policies if isinstance(p, dict) and p.get('status') == 'active')
+            total_policies = len(policies)
+            claims_paid = sum(c.get('payout_amount', 0) for c in claims if isinstance(c, dict) and c.get('status') == 'paid')
+        except Exception as e:
+            logger.warning("Database unavailable for dashboard: %s", e)
 
     blockchain_stats = None
     blockchain = ext.blockchain
@@ -114,7 +122,7 @@ def dashboard_data():
                 "chain_id": w3.eth.chain_id
             }
         except Exception as e:
-            logger.exception("Error getting blockchain stats: %s", e)
+            logger.warning("Blockchain unavailable for dashboard: %s", e)
 
     recent_policies = sorted(policies, key=lambda x: x.get('created_at', ''), reverse=True)[:5]
     recent_claims = sorted(claims, key=lambda x: x.get('created_at', ''), reverse=True)[:5]

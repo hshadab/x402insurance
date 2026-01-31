@@ -110,8 +110,9 @@ x402insurance/
 │     policies.py    POST /insure, GET /policies, POST /renew
 │     claims.py      POST /claim, GET /claims/<id>, GET /proofs/<id>
 │     verify.py      POST /verify (public, rate-limited)
-│     discovery.py   GET /, /.well-known/agent-card.json, /api/*
-│     health.py      GET /health, /ping, /metrics, /api/reserves, /invocations
+│     discovery.py          GET /, /.well-known/agent-card.json, /api/*
+│     health.py             GET /health, /ping, /metrics, /api/reserves, /invocations
+│     dashboard_health.py   Lightweight /health, /ping, /metrics (dashboard only)
 ├── Core Services
 │     auth/payment_verifier.py    x402 V2 facilitator verification
 │     database.py                 JSONFileBackend (dev) | PostgreSQLBackend (prod)
@@ -121,7 +122,8 @@ x402insurance/
 │     tasks/reserve_monitor.py    Reserve health monitoring & alerts
 │     extensions.py               Shared service instances + thread-safe metrics
 ├── Dockerfile                  Full service image (Jolt binary + QEMU)
-└── Dockerfile.dashboard        Lightweight dashboard image (no Jolt/ONNX)
+├── Dockerfile.dashboard        Lightweight dashboard image (no Jolt/ONNX)
+└── ECR: x402-insurance-dashboard  Dashboard image in us-east-1
 ```
 
 ## x402 V2 Payment Flow
@@ -247,7 +249,17 @@ agentcore deploy
 ```
 
 **App Runner** (dashboard):
-Deploy using `Dockerfile.dashboard` — auto-deploys from `main` branch.
+```bash
+# Build and push to ECR
+docker build -f Dockerfile.dashboard -t x402-dashboard .
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin 851725214068.dkr.ecr.us-east-1.amazonaws.com
+docker tag x402-dashboard 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+
+# Deploy (or redeploy existing service)
+aws apprunner start-deployment --service-arn <SERVICE_ARN> --region us-east-1
+```
 
 ### Docker Compose
 

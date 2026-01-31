@@ -28,7 +28,7 @@ WORKDIR /app
 # Copy only the files the dashboard needs
 COPY --chown=x402user:x402user static/ /app/static/
 COPY --chown=x402user:x402user blueprints/ /app/blueprints/
-COPY --chown=x402user:x402user app.py config.py extensions.py dashboard_server.py /app/
+COPY --chown=x402user:x402user app.py config.py extensions.py dashboard_server.py utils.py /app/
 COPY --chown=x402user:x402user requirements-prod.txt /app/
 
 USER x402user

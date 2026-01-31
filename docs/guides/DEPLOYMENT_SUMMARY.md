@@ -18,10 +18,12 @@
 
 ## Docker Images
 
-| Image | Dockerfile | Contents |
-|-------|-----------|----------|
-| Full service | `Dockerfile` | Python + Jolt binary + QEMU + ONNX model + all deps |
-| Dashboard | `Dockerfile.dashboard` | Python + Flask + static files only |
+| Image | Dockerfile | ECR Repository | Contents |
+|-------|-----------|----------------|----------|
+| Full service | `Dockerfile` | `x402insurance` | Python + Jolt binary + QEMU + ONNX model + all deps |
+| Dashboard | `Dockerfile.dashboard` | `x402-insurance-dashboard` | Python + Flask + static files only |
+
+ECR registry: `851725214068.dkr.ecr.us-east-1.amazonaws.com`
 
 ## Quick Deploy
 
@@ -33,9 +35,16 @@ agentcore deploy
 # Docker Compose (both services)
 docker-compose up
 
-# Dashboard only
+# Dashboard only (local)
 docker build -f Dockerfile.dashboard -t x402-dashboard .
 docker run -p 8000:8000 x402-dashboard
+
+# Dashboard to App Runner (via ECR)
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin 851725214068.dkr.ecr.us-east-1.amazonaws.com
+docker tag x402-dashboard 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+aws apprunner start-deployment --service-arn <SERVICE_ARN> --region us-east-1
 ```
 
 ## Environment Variables
@@ -55,7 +64,8 @@ docker run -p 8000:8000 x402-dashboard
 ## Verification
 
 ```bash
-curl http://localhost:8080/health   # AgentCore
-curl http://localhost:8000/health   # Dashboard
+curl http://localhost:8080/health   # AgentCore (full health checks)
+curl http://localhost:8000/health   # Dashboard (lightweight: {"status":"healthy","mode":"dashboard-readonly"})
+curl https://4axkjkepdx.us-east-1.awsapprunner.com/health  # Live dashboard
 pytest tests/unit/ -v               # Tests
 ```
