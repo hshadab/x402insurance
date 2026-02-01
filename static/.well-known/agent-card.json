@@ -222,14 +222,12 @@
   "links": {
     "documentation": "https://x402insurance.example.com/docs",
     "pricing": "https://x402insurance.example.com/api/pricing",
-    "schema": "https://x402insurance.example.com/api/schema",
     "dashboard": "https://x402insurance.example.com/api/dashboard",
     "github": "https://github.com/hshadab/x402insurance",
     "issue_tracker": "https://github.com/coinbase/x402/issues/508"
   },
   "discovery": {
     "agent_card": "https://x402insurance.example.com/.well-known/agent-card.json",
-    "openapi": "https://x402insurance.example.com/api/schema",
     "health": "https://x402insurance.example.com/health"
   },
   "contact": {

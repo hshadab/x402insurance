@@ -1,8 +1,6 @@
 """
-Discovery blueprint — /, /docs, /api, /api/dashboard, /api/pricing, /api/schema, /.well-known/agent-card.json
+Discovery blueprint — /, /docs, /api, /api/dashboard, /api/pricing, /.well-known/agent-card.json
 """
-import json
-from pathlib import Path
 from flask import Blueprint, request, jsonify, send_from_directory, redirect
 import extensions as ext
 
@@ -21,7 +19,7 @@ def docs():
 
 @discovery_bp.route('/view/<page>')
 def json_viewer(page):
-    if page in ('pricing', 'schema', 'agent-card'):
+    if page in ('pricing', 'agent-card'):
         return redirect('/#' + page)
     return "Not found", 404
 
@@ -40,7 +38,6 @@ def api_info():
         "provider": "x402 Insurance",
         "endpoints": {
             "discovery": "GET /.well-known/agent-card.json",
-            "schema": "GET /api/schema",
             "pricing": "GET /api/pricing",
             "dashboard": "GET /api/dashboard",
             "create_policy": "POST /insure (x402 payment required)",
@@ -65,7 +62,6 @@ def api_info():
         },
         "status": "operational",
         "links": {
-            "documentation": f"{base_url}/api/schema",
             "pricing": f"{base_url}/api/pricing",
             "agentCard": f"{base_url}/.well-known/agent-card.json"
         }
@@ -183,22 +179,6 @@ def pricing_info():
     })
 
 
-@discovery_bp.route('/api/schema')
-def api_schema():
-    import yaml
-    schema_path = Path(__file__).parent.parent / 'openapi.yaml'
-    if not schema_path.exists():
-        return jsonify({"error": "Schema not found"}), 404
-    accept = request.headers.get('Accept', 'application/json')
-    with open(schema_path, 'r') as f:
-        schema_content = f.read()
-    if 'application/yaml' in accept or 'text/yaml' in accept:
-        return schema_content, 200, {'Content-Type': 'application/yaml'}
-    else:
-        schema = yaml.safe_load(schema_content)
-        return jsonify(schema)
-
-
 @discovery_bp.route('/.well-known/agent-card.json')
 def agent_card():
     base_url = request.host_url.rstrip('/')
@@ -211,7 +191,7 @@ def agent_card():
             "name": "x402 Insurance",
             "description": "Zero-knowledge proof verified insurance against x402 service failures. Protect your micropayment API calls with instant refunds.",
             "provider": "x402 Insurance", "version": "1.0.0", "url": base_url,
-            "contact": {"support": f"{base_url}/api", "documentation": f"{base_url}/api/schema"}
+            "contact": {"support": f"{base_url}/api"}
         },
         "capabilities": {
             "x402": True, "zkProofs": True, "instantRefunds": True, "micropayments": True,
@@ -321,7 +301,7 @@ def agent_card():
         },
         "links": {
             "self": f"{base_url}/.well-known/agent-card.json", "api": f"{base_url}/api",
-            "schema": f"{base_url}/api/schema", "pricing": f"{base_url}/api/pricing",
+            "pricing": f"{base_url}/api/pricing",
             "dashboard": f"{base_url}/", "health": f"{base_url}/health"
         }
     })

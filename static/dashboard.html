@@ -247,7 +247,6 @@
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="docs">API Docs</button>
             <button class="nav-tab" data-tab="pricing">Pricing</button>
-            <button class="nav-tab" data-tab="openapi">OpenAPI</button>
             <button class="nav-tab" data-tab="agent-card">Agent Card</button>
         </div>
     </div>
@@ -443,8 +442,6 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
 
     <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api/pricing</span><span class="endpoint-desc">Pricing model</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Premium rates, coverage limits, and economic analysis.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api/pricing',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api/schema</span><span class="endpoint-desc">OpenAPI spec</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Full OpenAPI 3.0 specification in JSON.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api/schema',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
-
     <!-- Policies -->
     <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Policies</h3></div>
 
@@ -540,17 +537,6 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
     </div>
 </div>
 
-<!-- ==================== OPENAPI TAB ==================== -->
-<div id="tab-openapi" class="tab-content">
-    <div style="padding:32px 0 24px;">
-        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">OpenAPI Specification</h2>
-        <p style="color:var(--text2);font-size:14px;">Live from <span class="mono" style="color:var(--blue);">/api/schema</span></p>
-    </div>
-    <div class="glass json-panel">
-        <pre id="openapiJson">Loading...</pre>
-    </div>
-</div>
-
 <!-- ==================== AGENT CARD TAB ==================== -->
 <div id="tab-agent-card" class="tab-content">
     <div style="padding:32px 0 24px;">
@@ -591,7 +577,6 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
             document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
             $('tab-'+t.dataset.tab).classList.add('active');
             if(t.dataset.tab==='pricing'&&!window._pricingLoaded){loadJson('/api/pricing','pricingJson');window._pricingLoaded=true;}
-            if(t.dataset.tab==='openapi'&&!window._openapiLoaded){loadJson('/api/schema','openapiJson');window._openapiLoaded=true;}
             if(t.dataset.tab==='agent-card'&&!window._agentCardLoaded){loadJson('/.well-known/agent-card.json','agentCardJson');window._agentCardLoaded=true;}
         });
     });
