@@ -3,66 +3,70 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>NovNet x402 Insurance — Service Dashboard (Read-Only)</title>
+    <title>NovNet x402 Insurance — AgentCore Service Dashboard</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e1;</text></svg>"/>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         :root{
-            --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a2e;
-            --card:#ffffff08;--card-border:#ffffff12;--card-hover:#ffffff15;
-            --blue:#3b82f6;--blue-dim:#3b82f640;
-            --green:#10b981;--green-dim:#10b98130;
-            --red:#ef4444;--red-dim:#ef444430;
-            --yellow:#f59e0b;--yellow-dim:#f59e0b30;
-            --purple:#a78bfa;--purple-dim:#a78bfa30;
-            --orange:#ec7211;--orange-dim:#ec721130;
-            --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
-            --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+            --bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;
+            --card:rgba(255,255,255,0.04);--card-border:rgba(255,255,255,0.08);--card-hover:rgba(255,255,255,0.07);
+            --aws-navy:#232f3e;--aws-navy-light:#2a3749;
+            --blue:#539fe5;--blue-dim:rgba(83,159,229,0.15);
+            --green:#2ea043;--green-dim:rgba(46,160,67,0.15);
+            --red:#f85149;--red-dim:rgba(248,81,73,0.15);
+            --yellow:#d29922;--yellow-dim:rgba(210,153,34,0.15);
+            --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.15);
+            --orange:#ec7211;--orange-dim:rgba(236,114,17,0.12);
+            --text:#d1d5db;--text2:#8b949e;--text3:#6e7681;
+            --font:'Amazon Ember',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
             --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
         }
         body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;}
 
         /* NAV */
-        .nav{position:sticky;top:0;z-index:100;background:#12121ae0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+        .nav{position:sticky;top:0;z-index:100;background:var(--aws-navy);border-bottom:1px solid rgba(255,255,255,0.1);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;}
         .nav-left{display:flex;align-items:center;gap:28px;}
         .nav-logo{font-size:17px;font-weight:700;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px;}
         .nav-logo .logo-novnet{color:var(--orange);font-weight:800;}
         .nav-logo svg{width:26px;height:26px;}
         .nav-tabs{display:flex;gap:2px;}
-        .nav-tab{color:var(--text2);text-decoration:none;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:all .2s;cursor:pointer;border:none;background:none;}
-        .nav-tab:hover{color:#fff;background:#ffffff10;}
-        .nav-tab.active{color:var(--blue);background:var(--blue-dim);}
+        .nav-tab{color:rgba(255,255,255,0.7);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;transition:all .2s;cursor:pointer;border:none;background:none;}
+        .nav-tab:hover{color:#fff;background:rgba(255,255,255,0.1);}
+        .nav-tab.active{color:#fff;background:var(--orange);}
         .nav-right{display:flex;align-items:center;gap:10px;}
         .status-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);}
         .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
         .status-dot.error{background:var(--red);box-shadow:0 0 8px var(--red);}
-        .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:#ffffff10;color:var(--text2);border:1px solid var(--card-border);}
-        .badge-blue{background:var(--blue-dim);color:var(--blue);border-color:var(--blue-dim);}
+        .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:rgba(255,255,255,0.08);color:var(--text2);border:1px solid var(--card-border);}
+        .badge-blue{background:var(--orange-dim);color:var(--orange);border-color:rgba(236,114,17,0.3);}
 
         /* LAYOUT */
         .container{max-width:1280px;margin:0 auto;padding:24px;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
 
-        /* GLASS CARDS */
-        .glass{background:var(--card);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--card-border);border-radius:16px;transition:border-color .2s;}
-        .glass:hover{border-color:#ffffff20;}
+        /* CARDS */
+        .glass{background:var(--bg2);border:1px solid var(--card-border);border-radius:8px;transition:border-color .2s;}
+        .glass:hover{border-color:rgba(255,255,255,0.12);}
         .section-title{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
         .section-title .icon{font-size:20px;}
 
         /* HERO */
         .hero{text-align:center;padding:40px 20px 16px;}
-        .hero h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,#fff 0%,var(--blue) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;}
+        .hero h1{font-size:28px;font-weight:800;color:#fff;margin-bottom:10px;}
+        .hero h1 span{color:var(--orange);}
         .hero p{color:var(--text2);font-size:14px;max-width:700px;margin:0 auto;line-height:1.7;}
-        .hero a{color:var(--blue);text-decoration:none;}
+        .hero a{color:var(--orange);text-decoration:none;font-weight:500;}
         .hero a:hover{text-decoration:underline;}
 
         /* AWS INFO STRIP */
-        .aws-info{margin:20px 0 24px;padding:16px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;font-size:12px;}
-        .aws-info .ai-row{display:flex;align-items:center;gap:6px;}
-        .aws-info .ai-label{color:var(--text3);font-weight:600;white-space:nowrap;}
-        .aws-info .ai-val{font-family:var(--mono);color:var(--text2);word-break:break-all;font-size:11px;}
-        .aws-info .ai-val a{color:var(--blue);text-decoration:none;}
+        .aws-info{margin:20px 0 24px;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;font-size:12px;overflow:hidden;}
+        .aws-info .ai-cell{padding:16px 20px;border-right:1px solid var(--card-border);}
+        .aws-info .ai-cell:last-child{border-right:none;}
+        .aws-info .ai-label{display:block;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;margin-bottom:6px;}
+        .aws-info .ai-val{display:block;font-family:var(--mono);color:var(--text);word-break:break-all;font-size:12px;line-height:1.4;}
+        .aws-info .ai-val a{color:var(--orange);text-decoration:none;}
+        .aws-info .ai-val a:hover{text-decoration:underline;}
         .refresh-note{text-align:center;font-size:11px;color:var(--text3);margin-bottom:16px;}
 
         /* METRICS */
@@ -88,11 +92,11 @@
         /* HOW IT WORKS */
         .how-it-works{padding:24px;margin-bottom:24px;}
         .hiw-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:12px;}
-        .hiw-step{position:relative;padding:20px;background:#ffffff06;border-radius:12px;}
-        .hiw-step .step-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--blue-dim);color:var(--blue);font-weight:700;font-size:13px;margin-bottom:10px;}
+        .hiw-step{position:relative;padding:20px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--card-border);}
+        .hiw-step .step-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--orange-dim);color:var(--orange);font-weight:700;font-size:13px;margin-bottom:10px;}
         .hiw-step h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px;}
         .hiw-step p{font-size:12px;color:var(--text2);line-height:1.6;}
-        .hiw-step a{color:var(--blue);text-decoration:none;font-size:12px;}
+        .hiw-step a{color:var(--orange);text-decoration:none;font-size:12px;}
         .hiw-step a:hover{text-decoration:underline;}
 
         /* CURL EXAMPLES */
@@ -147,8 +151,8 @@
         .lookup-row{display:flex;gap:12px;align-items:center;}
         .lookup-row input{flex:1;background:#ffffff08;border:1px solid var(--card-border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
         .lookup-row input:focus{border-color:var(--blue);}
-        .btn{padding:10px 20px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
-        .btn:hover{background:#2563eb;transform:translateY(-1px);}
+        .btn{padding:10px 20px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+        .btn:hover{background:#d4650f;transform:translateY(-1px);}
         .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
         .btn-sm{padding:6px 14px;font-size:12px;border-radius:8px;}
         .btn-refresh{background:#ffffff10;color:var(--text2);border:1px solid var(--card-border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;}
@@ -158,13 +162,13 @@
         .lookup-result pre{background:#ffffff06;border:1px solid var(--card-border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:12px;overflow-x:auto;color:var(--text2);white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;}
 
         /* API DOCS TAB */
-        .endpoint-card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;margin-bottom:16px;overflow:hidden;}
+        .endpoint-card{background:var(--bg2);border:1px solid var(--card-border);border-radius:8px;margin-bottom:12px;overflow:hidden;}
         .endpoint-header{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;user-select:none;transition:background .15s;}
         .endpoint-header:hover{background:#ffffff08;}
         .endpoint-method{font-size:11px;font-weight:700;font-family:var(--mono);padding:3px 8px;border-radius:4px;min-width:40px;text-align:center;}
         .method-get{background:var(--green-dim);color:var(--green);}
         .method-post{background:var(--blue-dim);color:var(--blue);}
-        .endpoint-path{font-family:var(--mono);font-size:14px;font-weight:600;color:#fff;}
+        .endpoint-path{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--orange);}
         .endpoint-desc{font-size:13px;color:var(--text3);margin-left:auto;}
         .endpoint-badges{display:flex;gap:6px;margin-left:12px;}
         .endpoint-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;}
@@ -194,7 +198,7 @@
         .flow-steps{display:flex;flex-direction:column;gap:0;margin:12px 0;}
         .flow-step{display:flex;gap:14px;padding:12px 0;position:relative;}
         .flow-step:not(:last-child)::after{content:'';position:absolute;left:13px;top:44px;bottom:0;width:2px;background:var(--card-border);}
-        .flow-num{width:28px;height:28px;border-radius:50%;background:var(--blue-dim);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+        .flow-num{width:28px;height:28px;border-radius:50%;background:var(--orange-dim);color:var(--orange);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
         .flow-content{flex:1;}
         .flow-content h4{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;}
         .flow-content p{font-size:12px;color:var(--text2);}
@@ -210,17 +214,19 @@
 
         /* FOOTER */
         .footer{text-align:center;padding:32px 20px;color:var(--text3);font-size:12px;border-top:1px solid var(--card-border);margin-top:24px;line-height:1.8;}
-        .footer a{color:var(--blue);text-decoration:none;}
+        .footer a{color:var(--orange);text-decoration:none;}
         .footer .sep{color:var(--card-border);margin:0 4px;}
 
         /* RESPONSIVE */
         @media(max-width:900px){
             .metrics{grid-template-columns:repeat(2,1fr);}
+            .aws-info{grid-template-columns:repeat(2,1fr);}
+            .aws-info .ai-cell:nth-child(2){border-right:none;}
             .two-col,.hiw-steps{grid-template-columns:1fr;}
             .nav-tabs{display:none;}
             .gauge-wrap{flex-direction:column;}
         }
-        @media(max-width:500px){.metrics{grid-template-columns:1fr;}.hiw-steps{grid-template-columns:1fr;}}
+        @media(max-width:500px){.metrics{grid-template-columns:1fr;}.hiw-steps{grid-template-columns:1fr;}.aws-info{grid-template-columns:1fr;}.aws-info .ai-cell{border-right:none;border-bottom:1px solid var(--card-border);}.aws-info .ai-cell:last-child{border-bottom:none;}}
 
         /* SCROLLBAR */
         ::-webkit-scrollbar{width:6px;height:6px;}
@@ -257,16 +263,16 @@
 <div id="tab-dashboard" class="tab-content active">
 
     <div class="hero">
-        <h1>Service Dashboard (Read-Only)</h1>
-        <p>Monitoring dashboard for the x402 Insurance Service. The primary service runs on <strong>AWS Bedrock AgentCore</strong> &mdash; this App Runner instance provides read-only status, documentation, and agent discovery. All API operations (insure, claim, verify) are handled by the AgentCore service.</p>
+        <h1><span>AgentCore</span> Service Dashboard</h1>
+        <p>Monitoring dashboard for the x402 Insurance Service powered by <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> zero knowledge machine learning. The primary service runs on <strong>AWS Bedrock AgentCore</strong> &mdash; this App Runner instance provides read-only status, documentation, and agent discovery.</p>
     </div>
 
     <!-- AWS INFO -->
     <div class="glass aws-info">
-        <div class="ai-row"><span class="ai-label">AgentCore:</span> <span class="ai-val">arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</span></div>
-        <div class="ai-row"><span class="ai-label">App Runner:</span> <span class="ai-val">a54c141ba18a4b59b2adfb21bff52730</span></div>
-        <div class="ai-row"><span class="ai-label">Region:</span> <span class="ai-val">us-east-1</span></div>
-        <div class="ai-row"><span class="ai-label">Account:</span> <span class="ai-val">851725214068</span></div>
+        <div class="ai-cell"><span class="ai-label">AgentCore ARN</span><span class="ai-val">arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</span></div>
+        <div class="ai-cell"><span class="ai-label">App Runner ID</span><span class="ai-val">a54c141ba18a4b59b2adfb21bff52730</span></div>
+        <div class="ai-cell"><span class="ai-label">Region</span><span class="ai-val">us-east-1</span></div>
+        <div class="ai-cell"><span class="ai-label">Account</span><span class="ai-val">851725214068</span></div>
     </div>
 
     <div class="refresh-note" id="refreshNote">Service is operational. Data refreshed at <span id="refreshTime">--</span>.</div>
@@ -361,12 +367,12 @@
             <div class="hiw-step">
                 <div class="step-badge">3</div>
                 <h4>Submit Claim &amp; Generate Proof</h4>
-                <p>Agent sends <strong>POST /claim</strong> to the <strong>AgentCore service</strong>. The server re-fetches the merchant URL for fraud detection, then runs the <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> prover binary. This executes a trained ONNX neural network (<code>claim_classifier.onnx</code> &mdash; a 2-layer MLP classifying failure vs. success) inside a SNARK circuit, producing a cryptographic proof of correct model execution.</p>
+                <p>Agent sends <strong>POST /claim</strong> to the <strong>AgentCore service</strong>. The server re-fetches the merchant URL for fraud detection, then runs the <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> prover binary. This executes a trained ONNX neural network (<code>claim_classifier.onnx</code> &mdash; a 2-layer MLP classifying failure vs. success) inside a zkML circuit, producing a cryptographic proof of correct model execution.</p>
             </div>
             <div class="hiw-step">
                 <div class="step-badge">4</div>
                 <h4>Verify &amp; Refund On-Chain</h4>
-                <p>The SNARK proof is verified &mdash; confirming the ONNX model was executed correctly over the claimed inputs (http_status, body_length, coverage_amount) and that the output classifies the response as a failure. If valid, USDC is transferred on Base Mainnet to the agent's wallet. The proof is publicly auditable via <strong>POST /verify</strong> on the AgentCore service.</p>
+                <p>The zkML proof is verified &mdash; confirming the ONNX model was executed correctly over the claimed inputs (http_status, body_length, coverage_amount) and that the output classifies the response as a failure. If valid, USDC is transferred on Base Mainnet to the agent's wallet. The proof is publicly auditable via <strong>POST /verify</strong> on the AgentCore service.</p>
             </div>
         </div>
     </div>
@@ -476,7 +482,7 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
     <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Claims</h3></div>
 
     <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/claim</span><span class="endpoint-desc">Submit claim</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Submit a claim for a failed API call. Server re-fetches merchant URL, generates Jolt Atlas SNARK proof over ONNX model inference, and issues USDC refund if valid.</p>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Submit a claim for a failed API call. Server re-fetches merchant URL, generates Jolt Atlas zkML proof over ONNX model inference, and issues USDC refund if valid.</p>
         <div class="note-box"><strong>Fraud Detection:</strong> The server independently re-fetches the merchant URL to verify the failure. If the agent claims 5xx but the server sees 200, the claim is flagged.</div>
         <div class="sub-heading">Request Body</div>
         <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
@@ -500,13 +506,13 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
 
     <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/claims/:claim_id</span><span class="endpoint-desc">Get claim status</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns claim details. Useful for polling async claims.</p></div></div>
 
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/proofs/:claim_id</span><span class="endpoint-desc">Get proof data</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns the full Jolt Atlas SNARK proof, program_io, and public inputs for a claim.</p></div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/proofs/:claim_id</span><span class="endpoint-desc">Get proof data</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns the full Jolt Atlas zkML proof, program_io, and public inputs for a claim.</p></div></div>
 
     <!-- Verification -->
     <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Verification</h3></div>
 
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/verify</span><span class="endpoint-desc">Verify SNARK proof</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span><span class="endpoint-badge badge-rate">30/hr</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Independently verify a Jolt Atlas SNARK proof. Confirms the ONNX model was executed correctly and the output is valid. Public, rate-limited.</p>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/verify</span><span class="endpoint-desc">Verify zkML proof</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span><span class="endpoint-badge badge-rate">30/hr</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Independently verify a Jolt Atlas zkML proof. Confirms the ONNX model was executed correctly and the output is valid. Public, rate-limited.</p>
         <div class="sub-heading">Request Body</div>
         <pre class="code-block">{
   "proof": "base64-encoded-proof",
