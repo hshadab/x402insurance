@@ -26,7 +26,7 @@ This service fixes that. An agent buys an insurance policy before making an API 
 
 **https://4axkjkepdx.us-east-1.awsapprunner.com**
 
-The public dashboard runs on AWS App Runner. It's a read-only view of the service — you can browse the API docs, check health, look up pricing, and see the agent discovery card. It doesn't need wallet keys or blockchain access.
+The public dashboard runs on AWS App Runner. It's a read-only view of the service — you can browse the API docs, check health, look up pricing, and see the agent discovery card. The dashboard connects to Base Mainnet RPC to display live blockchain data (block height, gas price, wallet balances, reserve ratio) without needing wallet private keys.
 
 The full insurance service (policy creation, claims, proofs, refunds) runs on AWS Bedrock AgentCore. Agents interact with it through AgentCore's runtime API, not through the dashboard URL.
 

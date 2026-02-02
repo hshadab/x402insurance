@@ -48,7 +48,7 @@ docker tag x402-dashboard 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insu
 docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
 ```
 
-The dashboard runs with `DASHBOARD_ONLY=true`, which skips all blockchain/prover initialization and only registers discovery + health blueprints.
+The dashboard runs with `DASHBOARD_ONLY=true`, which skips blockchain transaction signing and proof generation but still connects to Base Mainnet RPC (read-only) to display live block height, gas price, wallet balances, and reserve ratio on the health endpoint. Database is initialized for policy/claim counts.
 
 ## Docker Compose (Local Development)
 

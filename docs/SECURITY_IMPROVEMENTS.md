@@ -228,6 +228,13 @@ CHAIN_ID=84532
 
 ## Changelog
 
+**2026-02-02 (v2.5.1)**:
+- **Dashboard blockchain data**: Dashboard-only mode now connects to Base Mainnet RPC to display live block height, gas price, wallet balances, and reserve ratio
+- **Dashboard database init**: Database is now initialized in dashboard-only mode so health check reports operational
+- **Dashboard Redis skip**: Redis health check is skipped in dashboard-only mode (not needed)
+- **Removed monitoring check**: Sentry monitoring check removed from health endpoint (was always showing "disabled")
+- **CI pipeline fix**: Updated module imports to `core.*` paths; AgentCore config validation skips gracefully when `.bedrock_agentcore.yaml` is gitignored
+
 **2026-02-02 (v2.5.0)**:
 - **Null-check hardening**: All blueprint handlers validate `request.json` type and use `.get()` for nested dict access
 - **Idempotency on /insure and /renew**: `Idempotency-Key` header support on all state-changing endpoints (previously only `/claim`)
