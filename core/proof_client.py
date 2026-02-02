@@ -147,9 +147,9 @@ class JoltProofClient:
         proof_data=None, instance_data=None
     ) -> bool:
         """Verify Jolt Atlas SNARK proof via the prover binary."""
-        p_data = proof_data or self._last_proof
+        resolved_proof_data = proof_data or self._last_proof
 
-        if not p_data:
+        if not resolved_proof_data:
             self.logger.warning("Cannot verify proof without proof data")
             return False
 
@@ -164,10 +164,10 @@ class JoltProofClient:
         # Build proof JSON for the binary verifier (includes program_io for real SNARK verification)
         verify_payload = {
             "proof": proof,
-            "program_io": p_data.get("program_io", ""),
+            "program_io": resolved_proof_data.get("program_io", ""),
             "public_inputs": public_inputs,
-            "model_hash": p_data.get("model_hash", self._model_hash),
-            "proof_system": p_data.get("proof_system", "jolt-atlas-snark"),
+            "model_hash": resolved_proof_data.get("model_hash", self._model_hash),
+            "proof_system": resolved_proof_data.get("proof_system", "jolt-atlas-snark"),
         }
 
         tmpfile = None

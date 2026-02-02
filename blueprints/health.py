@@ -2,8 +2,9 @@
 Health blueprint — /health, /ping, /invocations, /api/reserves, /metrics
 """
 import os
+import time
 import logging
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, Response
 from core.utils import iso_utc_now
 import extensions as ext
 
@@ -12,13 +13,13 @@ logger = logging.getLogger("x402insurance")
 
 
 @health_bp.route('/ping')
-def ping():
+def ping() -> tuple[Response, int]:
     import time as _time
     return jsonify({"status": "Healthy", "time_of_last_update": int(_time.time())}), 200
 
 
 @health_bp.route('/invocations', methods=['POST'])
-def invocations():
+def invocations() -> tuple[Response, int]:
     payload = request.get_json(silent=True) or {}
     endpoint = payload.get("endpoint", "/api")
     method = payload.get("method", "GET").upper()
@@ -41,7 +42,7 @@ def invocations():
 
 
 @health_bp.route('/health')
-def health():
+def health() -> tuple[Response, int]:
     cfg = ext.config
     include_blockchain = request.args.get('full', 'false').lower() == 'true'
 
@@ -160,14 +161,68 @@ def health():
     else:
         health_data["checks"]["reserves"] = {"status": "skipped"}
 
-    # 6. Payment Verifier Check
+    # 6. Payment Verifier / Facilitator Check
     try:
-        health_data["checks"]["payment_verifier"] = {"status": "operational", "mode": "facilitator"}
+        if cfg.FACILITATOR_URL and cfg.FACILITATOR_URL != "none":
+            import httpx
+            fac_start = time.monotonic()
+            try:
+                fac_resp = httpx.get(cfg.FACILITATOR_URL, timeout=5.0)
+                fac_latency_ms = round((time.monotonic() - fac_start) * 1000, 1)
+                health_data["checks"]["payment_verifier"] = {
+                    "status": "operational" if fac_resp.status_code < 500 else "degraded",
+                    "mode": "facilitator",
+                    "facilitator_url": cfg.FACILITATOR_URL,
+                    "facilitator_status": fac_resp.status_code,
+                    "latency_ms": fac_latency_ms,
+                }
+            except Exception as fac_err:
+                fac_latency_ms = round((time.monotonic() - fac_start) * 1000, 1)
+                health_data["checks"]["payment_verifier"] = {
+                    "status": "degraded",
+                    "mode": "facilitator",
+                    "error": str(fac_err),
+                    "latency_ms": fac_latency_ms,
+                }
+                is_degraded = True
+        else:
+            health_data["checks"]["payment_verifier"] = {"status": "operational", "mode": "local"}
     except Exception as e:
         health_data["checks"]["payment_verifier"] = {"status": "error", "error": str(e)}
         is_degraded = True
 
-    # 7. Monitoring Check
+    # 7. Redis Check (for Huey task queue)
+    try:
+        import redis
+        redis_url = cfg.REDIS_URL if hasattr(cfg, 'REDIS_URL') else "redis://localhost:6379/0"
+        redis_start = time.monotonic()
+        r = redis.from_url(redis_url, socket_connect_timeout=3)
+        r.ping()
+        redis_latency_ms = round((time.monotonic() - redis_start) * 1000, 1)
+        health_data["checks"]["redis"] = {
+            "status": "connected",
+            "latency_ms": redis_latency_ms,
+        }
+    except ImportError:
+        health_data["checks"]["redis"] = {"status": "skipped", "info": "redis package not installed"}
+    except Exception as e:
+        health_data["checks"]["redis"] = {"status": "error", "error": str(e)}
+        is_degraded = True
+
+    # 8. RPC Latency Measurement
+    if include_blockchain and ext.blockchain:
+        try:
+            rpc_start = time.monotonic()
+            ext.blockchain.w3.eth.block_number
+            rpc_latency_ms = round((time.monotonic() - rpc_start) * 1000, 1)
+            health_data["checks"]["rpc_latency"] = {
+                "status": "operational",
+                "latency_ms": rpc_latency_ms,
+            }
+        except Exception as e:
+            health_data["checks"]["rpc_latency"] = {"status": "error", "error": str(e)}
+
+    # 9. Monitoring Check
     try:
         sentry_enabled = bool(cfg.SENTRY_DSN)
         health_data["checks"]["monitoring"] = {"status": "enabled" if sentry_enabled else "disabled", "sentry": sentry_enabled}
@@ -190,7 +245,7 @@ def health():
 
 
 @health_bp.route('/api/reserves')
-def reserves():
+def reserves() -> tuple[Response, int]:
     try:
         health = ext.reserve_monitor.check_reserve_health()
         return jsonify(health), 200
@@ -200,6 +255,6 @@ def reserves():
 
 
 @health_bp.route('/metrics')
-def metrics():
+def metrics() -> tuple[bytes, int, dict[str, str]]:
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}

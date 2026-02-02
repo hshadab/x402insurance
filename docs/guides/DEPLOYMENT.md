@@ -73,6 +73,20 @@ Services:
 - **Gas per refund:** ~0.000001 ETH (~$0.003)
 - **USDC for refunds:** depends on coverage volume
 
+## Huey Background Worker
+
+The Huey worker processes async claims and runs periodic recovery tasks. For graceful shutdown:
+
+```bash
+# Start worker with graceful shutdown timeout
+huey_consumer tasks.huey_config.huey --shutdown-timeout=30
+
+# The worker handles SIGTERM/SIGINT and finishes in-flight tasks before stopping.
+# Stuck claims (processing > CLAIM_TASK_TIMEOUT seconds) are auto-recovered every 5 minutes.
+```
+
+The health endpoint (`GET /health`) includes a Redis connectivity check to verify the task queue is reachable.
+
 ## Security Best Practices
 
 1. Never commit secrets — use environment variables

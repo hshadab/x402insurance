@@ -81,6 +81,9 @@ class DatabaseClient:
     def get_claim_by_idempotency_key(self, key: str) -> Optional[Dict]:
         return self.backend.get_claim_by_idempotency_key(key)
 
+    def get_policy_by_idempotency_key(self, key: str) -> Optional[Dict]:
+        return self.backend.get_policy_by_idempotency_key(key)
+
     # Nonce operations
     def is_nonce_used(self, payer: str, nonce: str) -> bool:
         return self.backend.is_nonce_used(payer, nonce)
@@ -269,6 +272,13 @@ class JSONFileBackend:
             items = items[offset:offset + limit]
             return dict(items)
         return policies
+
+    def get_policy_by_idempotency_key(self, key: str) -> Optional[Dict]:
+        policies = self._load_json(self.policies_file)
+        for pid, policy in policies.items():
+            if policy.get('idempotency_key') == key:
+                return {**policy, 'policy_id': policy.get('policy_id', pid)}
+        return None
 
     # Claim operations
     def create_claim(self, claim_id: str, claim_data: Dict) -> bool:
@@ -472,11 +482,16 @@ class PostgreSQLBackend:
                         status VARCHAR(20) NOT NULL,
                         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
                         expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        idempotency_key VARCHAR(255)
                     )
                 """)
 
                 # Add indexes
+                cur.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_policies_idempotency_key
+                    ON policies(idempotency_key) WHERE idempotency_key IS NOT NULL
+                """)
                 cur.execute("""
                     CREATE INDEX IF NOT EXISTS idx_policies_agent_status
                     ON policies(agent_address, status)
@@ -509,7 +524,8 @@ class PostgreSQLBackend:
                         idempotency_key VARCHAR(255),
                         server_verified BOOLEAN,
                         server_http_status INTEGER,
-                        merchant_url TEXT
+                        merchant_url TEXT,
+                        webhook_url TEXT
                     )
                 """)
 
@@ -541,8 +557,8 @@ class PostgreSQLBackend:
                         INSERT INTO policies (
                             policy_id, agent_address, merchant_url, merchant_url_hash,
                             coverage_amount, coverage_amount_units, premium, premium_units,
-                            status, created_at, expires_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            status, created_at, expires_at, idempotency_key
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         policy_id,
                         policy_data['agent_address'],
@@ -554,7 +570,8 @@ class PostgreSQLBackend:
                         policy_data['premium_units'],
                         policy_data['status'],
                         policy_data['created_at'],
-                        policy_data['expires_at']
+                        policy_data['expires_at'],
+                        policy_data.get('idempotency_key'),
                     ))
             return True
         except Exception as e:
@@ -572,7 +589,8 @@ class PostgreSQLBackend:
     ALLOWED_POLICY_UPDATE_COLUMNS = {
         'status', 'expires_at', 'renewed_at', 'renewal_count',
         'total_renewal_fees', 'merchant_url', 'coverage_amount',
-        'coverage_amount_units', 'premium', 'premium_units'
+        'coverage_amount_units', 'premium', 'premium_units',
+        'idempotency_key'
     }
 
     def update_policy(self, policy_id: str, updates: Dict) -> bool:
@@ -638,6 +656,13 @@ class PostgreSQLBackend:
                     cur.execute("SELECT * FROM policies")
                 return {row['policy_id']: dict(row) for row in cur.fetchall()}
 
+    def get_policy_by_idempotency_key(self, key: str) -> Optional[Dict]:
+        with self.get_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM policies WHERE idempotency_key = %s LIMIT 1", (key,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+
     # Claim operations
     def create_claim(self, claim_id: str, claim_data: Dict) -> bool:
         try:
@@ -651,8 +676,9 @@ class PostgreSQLBackend:
                             payout_amount, payout_amount_units,
                             refund_tx_hash, recipient_address,
                             status, created_at, paid_at,
-                            idempotency_key, server_verified, server_http_status, merchant_url
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            idempotency_key, server_verified, server_http_status, merchant_url,
+                            webhook_url
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         claim_id,
                         claim_data['policy_id'],
@@ -674,6 +700,7 @@ class PostgreSQLBackend:
                         claim_data.get('server_verified'),
                         claim_data.get('server_http_status'),
                         claim_data.get('merchant_url'),
+                        claim_data.get('webhook_url'),
                     ))
             return True
         except Exception as e:
@@ -693,7 +720,8 @@ class PostgreSQLBackend:
         'verification_result', 'http_status', 'http_body_hash', 'http_headers',
         'payout_amount', 'payout_amount_units', 'refund_tx_hash',
         'recipient_address', 'paid_at', 'error', 'failed_at',
-        'server_verified', 'server_http_status', 'merchant_url', 'idempotency_key'
+        'server_verified', 'server_http_status', 'merchant_url', 'idempotency_key',
+        'webhook_url'
     }
 
     def update_claim(self, claim_id: str, updates: Dict) -> bool:

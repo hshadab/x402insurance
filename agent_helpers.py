@@ -124,10 +124,13 @@ def agent_purchase_policy(
     import httpx
 
     # Step 1: POST without payment to get 402 requirements
+    import extensions as ext
+    policy_timeout = ext.config.POLICY_REQUEST_TIMEOUT if ext.config else 30.0
+
     resp = httpx.post(
         f"{server_url}/insure",
         json={"merchant_url": merchant_url, "coverage_amount": coverage_amount},
-        timeout=30.0,
+        timeout=policy_timeout,
     )
 
     if resp.status_code == 201:
@@ -171,7 +174,7 @@ def agent_purchase_policy(
             "PAYMENT-SIGNATURE": payment_header,
             "X-Payer": agent_address,
         },
-        timeout=30.0,
+        timeout=policy_timeout,
     )
 
     if resp2.status_code == 201:
@@ -210,8 +213,10 @@ def agent_submit_claim(
     if async_mode:
         url += "?async=true"
 
+    claim_timeout = ext.config.CLAIM_REQUEST_TIMEOUT if ext.config else 60.0
+
     # Step 1: POST without payment to get 402
-    resp = httpx.post(url, json=claim_body, timeout=60.0)
+    resp = httpx.post(url, json=claim_body, timeout=claim_timeout)
 
     if resp.status_code in (201, 202):
         return resp.json()
@@ -243,7 +248,7 @@ def agent_submit_claim(
             "PAYMENT-SIGNATURE": payment_header,
             "X-Payer": agent_address,
         },
-        timeout=120.0,
+        timeout=claim_timeout,
     )
 
     if resp2.status_code in (201, 202):

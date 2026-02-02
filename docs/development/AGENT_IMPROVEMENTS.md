@@ -247,10 +247,10 @@ From the comprehensive agent discovery analysis:
 6. ✅ **Limited Error Recovery** → New error handling guide with 7 scenarios
 
 ### Still Open (Future Work)
-1. **Async Proof Generation** - Currently synchronous (10-20s blocking)
+1. ~~**Async Proof Generation**~~ ✅ Implemented — `/claim?async=true` with polling
 2. **Automatic Failure Detection** - Agents must manually detect and report
 3. **AgentKit Integration** - No pre-built plugin yet
-4. **Policy Extension** - No renewal mechanism (24h strict expiration)
+4. ~~**Policy Extension**~~ ✅ Implemented — `POST /renew` endpoint
 
 ---
 
@@ -298,13 +298,13 @@ All changes are backward-compatible. No breaking changes to existing API.
 ## 🎯 Recommended Next Steps (Future Enhancements)
 
 ### High Priority (1-2 months)
-1. **Async Proof Generation** - Return immediately, poll for status
-2. **Webhook Notifications** - Alert agents when claims are processed
+1. ~~**Async Proof Generation**~~ ✅ Implemented — `/claim?async=true`
+2. ~~**Webhook Notifications**~~ ✅ Implemented — `webhook_url` field in claim submission
 3. **AgentKit Integration** - Create official Coinbase AgentKit plugin
 
 ### Medium Priority (3-6 months)
 1. **Automatic Failure Detection** - Monitor merchant health proactively
-2. **Policy Renewal/Extension** - Extend policies before 24h expiration
+2. ~~**Policy Renewal/Extension**~~ ✅ Implemented — `POST /renew` endpoint
 3. **Multi-language SDKs** - Python, JavaScript, Rust, Go
 
 ### Low Priority (6+ months)

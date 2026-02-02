@@ -2,7 +2,7 @@
 Verify blueprint — POST /verify
 """
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 import extensions as ext
 
 
@@ -12,8 +12,11 @@ logger = logging.getLogger("x402insurance")
 
 @verify_bp.route('/verify', methods=['POST'])
 @ext.limiter.limit("30/hour")
-def verify():
+def verify() -> tuple[Response, int] | Response:
     data = request.json
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
     proof = data.get('proof')
     public_inputs = data.get('public_inputs')
     claim_id = data.get('claim_id')

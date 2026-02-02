@@ -4,7 +4,7 @@
 
 - **Proof generation uses Jolt Atlas zkML — real SNARK proofs over ONNX model inference**
 - **Proof verification happens OFF-CHAIN (locally) BEFORE refund**
-- **Refund is issued BEFORE the claim is persisted** (refund-before-persist)
+- **Claim is persisted BEFORE the refund is issued** (DB-before-refund, crash-safe)
 - **Policy is atomically marked "claimed" to prevent race conditions**
 - **Full proof data stored locally in claim record for auditability**
 - **Invalid claims are REJECTED (no refund)**
@@ -132,9 +132,23 @@ if is_failure != 1:
     return error("No failure detected in HTTP response")  # REJECT
 ```
 
-### 7. Issue Refund (On-Chain) -- BEFORE Persisting Claim
+### 7. Persist Claim Record (Database) — BEFORE Refund
 
-**ONLY IF** verification passed and failure detected:
+The claim is saved with status `approved` before the refund is issued.
+This ensures a crash never loses a valid claim:
+
+```python
+database.create_claim(claim_id, {
+    ...,
+    "status": "approved",
+    "refund_tx_hash": None,
+    "paid_at": None,
+})
+```
+
+### 8. Issue Refund (On-Chain)
+
+**ONLY IF** verification passed, failure detected, and claim is persisted:
 
 ```python
 try:
@@ -143,20 +157,26 @@ try:
         amount=payout_amount_units
     )
 except Exception as e:
-    database.create_claim(claim_id, {..., "status": "refund_failed", "error": str(e)})
+    database.update_claim(claim_id, {"status": "refund_failed", "error": str(e)})
     return error("Refund failed")
-```
 
-### 8. Persist Claim Record (Database)
-
-Only after refund succeeds:
-
-```python
-database.create_claim(claim_id, {
-    ...,
+database.update_claim(claim_id, {
     "status": "paid",
     "refund_tx_hash": refund_tx_hash,
     "paid_at": iso_utc_now(),
+})
+```
+
+### 9. Webhook Delivery (Optional)
+
+If the claim included a `webhook_url`, the server POSTs the final status:
+
+```python
+httpx.post(webhook_url, json={
+    "claim_id": claim_id,
+    "policy_id": policy_id,
+    "status": "paid",  # or "refund_failed"
+    "refund_tx_hash": refund_tx_hash,
 })
 ```
 
@@ -179,7 +199,7 @@ its SHA-256 hash is embedded in every proof for auditability.
 ## Security Guarantees
 
 1. **No Double Claims** -- `claim_policy()` atomically marks policy as "claimed"
-2. **No Phantom Payments** -- Refund issued before claim persisted
+2. **Crash-Safe Ordering** -- Claim persisted before refund (DB-before-refund)
 3. **Model Integrity** -- Model hash in proof must match current ONNX file
 4. **Deterministic Proofs** -- Same inputs always produce same SNARK proof
 5. **Payout Cap** -- `public_inputs[3]` must not exceed `MAX_COVERAGE_USDC`

@@ -72,6 +72,14 @@ class Config:
     # Timeouts (in seconds)
     JOLT_TIMEOUT = int(os.getenv("JOLT_TIMEOUT", 60))
     BLOCKCHAIN_CONFIRMATION_TIMEOUT = int(os.getenv("BLOCKCHAIN_CONFIRMATION_TIMEOUT", 120))
+    MERCHANT_REQUEST_TIMEOUT = float(os.getenv("MERCHANT_REQUEST_TIMEOUT", 10.0))
+    POLICY_REQUEST_TIMEOUT = float(os.getenv("POLICY_REQUEST_TIMEOUT", 30.0))
+    CLAIM_REQUEST_TIMEOUT = float(os.getenv("CLAIM_REQUEST_TIMEOUT", 60.0))
+    CLAIM_TASK_TIMEOUT = int(os.getenv("CLAIM_TASK_TIMEOUT", 300))
+
+    # Webhooks
+    WEBHOOK_ENABLED = os.getenv("WEBHOOK_ENABLED", "true").lower() in ["1", "true", "yes"]
+    WEBHOOK_TIMEOUT = float(os.getenv("WEBHOOK_TIMEOUT", 10.0))
 
     # Chain configuration
     CHAIN_ID = int(os.getenv("CHAIN_ID", 8453))  # Base Mainnet default

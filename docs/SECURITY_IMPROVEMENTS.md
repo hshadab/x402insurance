@@ -228,6 +228,21 @@ CHAIN_ID=84532
 
 ## Changelog
 
+**2026-02-02 (v2.5.0)**:
+- **Null-check hardening**: All blueprint handlers validate `request.json` type and use `.get()` for nested dict access
+- **Idempotency on /insure and /renew**: `Idempotency-Key` header support on all state-changing endpoints (previously only `/claim`)
+- **Configurable HTTP timeouts**: `MERCHANT_REQUEST_TIMEOUT`, `POLICY_REQUEST_TIMEOUT`, `CLAIM_REQUEST_TIMEOUT`, `CLAIM_TASK_TIMEOUT` env vars
+- **Rate limit headers**: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After` returned on every response
+- **Type hints**: All blueprint route handlers have return type annotations
+- **Pinned dependencies**: `web3==7.14.0`, `eth-account==0.13.7` (were unpinned ranges)
+- **Request correlation IDs**: `X-Request-ID` header generated per request, injected into all log records
+- **Expanded Prometheus metrics**: `claims_failed_total`, `claims_processing_total`, `refunds_total`, `refunds_failed_total` counters; `claim_processing_duration_seconds`, `refund_duration_seconds` histograms; `reserve_ratio` gauge
+- **Structured JSON logging**: `LOG_FORMAT=json` env var enables machine-readable log output
+- **Claim processing timeout**: Huey tasks have `default_timeout`; periodic task recovers stuck claims
+- **Graceful Huey shutdown**: Signal handlers for SIGTERM/SIGINT, `--shutdown-timeout=30` support
+- **Webhook notifications**: Optional `webhook_url` on claim submission; server POSTs final status (SSRF-validated)
+- **Dependency health checks**: Health endpoint checks Redis connectivity, facilitator reachability, and RPC latency
+
 **2026-02-02 (v2.4.0)**:
 - **Claim fee settlement**: Claim anti-spam fee is now settled on-chain (was verified but never collected)
 - **Settlement-before-creation**: Policies and renewals are only created after payment settlement succeeds (no more "pending" settlements)

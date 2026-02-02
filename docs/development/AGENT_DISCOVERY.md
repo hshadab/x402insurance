@@ -6,7 +6,7 @@ This document describes how autonomous agents can discover and interact with the
 
 **Key Features for Agents:**
 1. **Memory Solution**: Use `GET /policies?wallet=0xYourAddress` to recover policy_id after context resets
-2. **Idempotency**: Add `Idempotency-Key` header to `/claim` requests to safely retry
+2. **Idempotency**: Add `Idempotency-Key` header to `/insure`, `/claim`, and `/renew` requests to safely retry
 3. **Claim Status**: Poll `GET /claims/{claim_id}` to check claim progress
 4. **Async Proof Generation**: Use `/claim?async=true` to avoid 15-30s blocking wait (NEW!)
 5. **Policy Renewal**: Extend policies before 24h expiration with `/renew` endpoint (NEW!)
@@ -18,8 +18,8 @@ This document describes how autonomous agents can discover and interact with the
 - `/policies?wallet=0x...` - **Retrieve your policies by wallet address** (solves memory problem!)
 - `/claims/{claim_id}` - Check claim status
 - `/insure` - Purchase policy (x402 payment required)
-- `/claim` - File failure claim (supports sync/async modes, idempotency)
-- `/renew` - **Extend policy before expiration** (x402 payment required) (NEW!)
+- `/claim` - File failure claim (supports sync/async modes, idempotency, optional `webhook_url`)
+- `/renew` - **Extend policy before expiration** (x402 payment required, supports idempotency)
 
 ## Discovery Endpoints
 
@@ -901,6 +901,34 @@ try:
 except TimeoutError:
     print("Claim taking longer than expected, check /claims/{claim_id} later")
 ```
+
+---
+
+#### 9. **Webhook Notifications** (NEW!)
+```python
+# Problem: Don't want to poll for async claim status
+# Solution: Provide webhook_url when submitting a claim
+
+response = httpx.post('/claim?async=true',
+    headers={'Idempotency-Key': str(uuid.uuid4())},
+    json={
+        'policy_id': policy_id,
+        'http_response': {'status': 503, 'body': '', 'headers': {}},
+        'merchant_url': 'https://api.example.com/data',
+        'webhook_url': 'https://myagent.com/webhooks/claims'  # NEW!
+    }
+)
+# When claim processing completes, server POSTs to your webhook_url:
+# {
+#   "claim_id": "uuid",
+#   "policy_id": "uuid",
+#   "status": "paid",
+#   "refund_tx_hash": "0x..."
+# }
+```
+
+#### 10. **Request Correlation**
+All responses include an `X-Request-ID` header. Include your own `X-Request-ID` in requests to correlate logs across services. If omitted, the server generates one automatically.
 
 ---
 

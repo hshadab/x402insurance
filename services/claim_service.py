@@ -1,6 +1,7 @@
 """
 Claim processing logic shared between synchronous and async paths.
 """
+import time
 import logging
 from core.utils import to_micro, iso_utc_now
 import extensions as ext
@@ -18,6 +19,9 @@ def process_claim(claim_id: str) -> None:
     Raises on unexpected errors; updates claim status in the database
     for all known failure modes.
     """
+    start_time = time.monotonic()
+    ext.claims_processing_total.inc()
+
     claim = ext.database.get_claim(claim_id)
     if not claim:
         logger.error("Claim not found: %s", claim_id)
@@ -47,6 +51,7 @@ def process_claim(claim_id: str) -> None:
         )
     except Exception as e:
         logger.error("Proof generation failed for claim %s: %s", claim_id, e)
+        ext.claims_failed_total.inc()
         ext.database.update_claim(claim_id, {
             'status': 'failed',
             'error': f'Proof generation failed: {e}',
@@ -89,18 +94,24 @@ def process_claim(claim_id: str) -> None:
 
     # Phase 4: Issue refund
     logger.info("Issuing refund for claim: %s", claim_id)
+    refund_start = time.monotonic()
     try:
         refund_tx_hash = ext.blockchain.issue_refund(
             to_address=claim['agent_address'],
             amount=claim['coverage_amount_units']
         )
+        ext.refund_duration_seconds.observe(time.monotonic() - refund_start)
+        ext.refunds_total.inc()
     except Exception as refund_err:
+        ext.refund_duration_seconds.observe(time.monotonic() - refund_start)
+        ext.refunds_failed_total.inc()
         logger.error("Refund failed for claim %s: %s", claim_id, refund_err)
         ext.database.update_claim(claim_id, {
             'status': 'refund_failed',
             'error': str(refund_err),
             'failed_at': iso_utc_now(),
         })
+        _deliver_webhook(claim_id, "refund_failed", error=str(refund_err))
         return
 
     # Phase 5: Mark as paid
@@ -111,4 +122,36 @@ def process_claim(claim_id: str) -> None:
     })
 
     ext.database.update_policy(claim['policy_id'], {'status': 'claimed'})
+    ext.claim_processing_duration_seconds.observe(time.monotonic() - start_time)
     logger.info("Claim processed successfully: %s, refund TX: %s", claim_id, refund_tx_hash)
+
+    # Deliver webhook notification
+    _deliver_webhook(claim_id, "paid", refund_tx_hash=refund_tx_hash)
+
+
+def _deliver_webhook(claim_id: str, status: str, **extra) -> None:
+    """POST claim status to the webhook_url if configured."""
+    cfg = ext.config
+    if not cfg or not getattr(cfg, 'WEBHOOK_ENABLED', False):
+        return
+
+    claim = ext.database.get_claim(claim_id)
+    if not claim:
+        return
+
+    webhook_url = claim.get('webhook_url')
+    if not webhook_url:
+        return
+
+    import httpx
+    payload = {
+        "claim_id": claim_id,
+        "policy_id": claim.get('policy_id'),
+        "status": status,
+        **extra,
+    }
+    try:
+        httpx.post(webhook_url, json=payload, timeout=cfg.WEBHOOK_TIMEOUT)
+        logger.info("Webhook delivered for claim %s to %s", claim_id, webhook_url)
+    except Exception as e:
+        logger.warning("Webhook delivery failed for claim %s: %s", claim_id, e)

@@ -50,6 +50,17 @@ PAYMENT_MAX_AGE_SECONDS=300
 
 # Security
 CORS_ORIGINS=https://yourdomain.com
+
+# Timeouts
+MERCHANT_REQUEST_TIMEOUT=10.0
+CLAIM_TASK_TIMEOUT=300
+
+# Webhooks
+WEBHOOK_ENABLED=true
+WEBHOOK_TIMEOUT=10.0
+
+# Observability
+LOG_FORMAT=json
 ```
 
 ## Step 2: Deploy AgentCore (Full Service)

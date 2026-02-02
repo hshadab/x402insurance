@@ -9,6 +9,36 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger("x402insurance")
 
+
+class RequestIDFilter(logging.Filter):
+    """Logging filter that injects request_id into log records."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            from flask import g
+            record.request_id = getattr(g, 'request_id', '-')
+        except RuntimeError:
+            record.request_id = '-'
+        return True
+
+
+class JSONLogFormatter(logging.Formatter):
+    """Structured JSON log formatter."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        import json as _json
+        log_entry = {
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "module": record.module,
+            "message": record.getMessage(),
+            "request_id": getattr(record, 'request_id', '-'),
+        }
+        if record.exc_info and record.exc_info[0]:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        return _json.dumps(log_entry)
+
+
 # Monetary helpers (USDC 6 decimals)
 MICRO = Decimal(10) ** 6
 

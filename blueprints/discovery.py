@@ -1,31 +1,31 @@
 """
 Discovery blueprint — /, /docs, /api, /api/dashboard, /api/pricing, /.well-known/agent-card.json
 """
-from flask import Blueprint, request, jsonify, send_from_directory, redirect, current_app
+from flask import Blueprint, request, jsonify, send_from_directory, redirect, current_app, Response
 import extensions as ext
 
 discovery_bp = Blueprint('discovery', __name__)
 
 
 @discovery_bp.route('/')
-def index():
+def index() -> Response:
     return send_from_directory('static', 'dashboard.html')
 
 
 @discovery_bp.route('/docs')
-def docs():
+def docs() -> Response:
     return redirect('/#docs')
 
 
 @discovery_bp.route('/view/<page>')
-def json_viewer(page):
+def json_viewer(page: str) -> Response | tuple[str, int]:
     if page in ('pricing', 'agent-card'):
         return redirect('/#' + page)
     return "Not found", 404
 
 
 @discovery_bp.route('/api')
-def api_info():
+def api_info() -> Response:
     base_url = request.host_url.rstrip('/')
     cfg = ext.config
 
@@ -69,7 +69,7 @@ def api_info():
 
 
 @discovery_bp.route('/api/dashboard')
-def dashboard_data():
+def dashboard_data() -> Response:
     import logging
 
     logger = logging.getLogger("x402insurance")
@@ -132,7 +132,7 @@ def dashboard_data():
 
 
 @discovery_bp.route('/api/pricing')
-def pricing_info():
+def pricing_info() -> Response:
     cfg = ext.config
     return jsonify({
         "premium": {
@@ -180,7 +180,7 @@ def pricing_info():
 
 
 @discovery_bp.route('/.well-known/agent-card.json')
-def agent_card():
+def agent_card() -> Response:
     base_url = request.host_url.rstrip('/')
     cfg = ext.config
 

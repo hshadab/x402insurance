@@ -7,7 +7,7 @@ import hashlib
 import logging
 import httpx
 from datetime import datetime, timezone
-from flask import Blueprint, request, jsonify, g, current_app
+from flask import Blueprint, request, jsonify, g, current_app, Response
 from core.utils import to_micro, iso_utc_now, parse_utc, validate_merchant_url
 import extensions as ext
 
@@ -39,11 +39,17 @@ def process_claim_async(claim_id: str):
 
 @claims_bp.route('/claim', methods=['POST'])
 @ext.limiter.limit(lambda: current_app.config["RATE_LIMIT_CLAIM"])
-def claim():
+def claim() -> tuple[Response, int]:
     cfg = ext.config
     data = request.json
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
     policy_id = data.get('policy_id')
     http_response = data.get('http_response')
+
+    if not isinstance(http_response, dict):
+        return jsonify({"error": "http_response must be a JSON object"}), 400
 
     if not policy_id or not http_response:
         return jsonify({"error": "Missing policy_id or http_response"}), 400
@@ -61,6 +67,14 @@ def claim():
     if headers is not None and not isinstance(headers, dict):
         return jsonify({"error": "http_response.headers must be a dict"}), 400
 
+    # Optional webhook URL for async status notifications
+    webhook_url = data.get('webhook_url')
+    if webhook_url:
+        try:
+            validate_merchant_url(webhook_url)
+        except ValueError as e:
+            return jsonify({"error": f"Invalid webhook_url: {e}"}), 400
+
     # merchant_url is required for server-side verification
     merchant_url = data.get('merchant_url')
     if not merchant_url:
@@ -74,7 +88,7 @@ def claim():
     server_verified = False
     server_http_status = None
     try:
-        server_resp = httpx.get(merchant_url, timeout=10.0, follow_redirects=True)
+        server_resp = httpx.get(merchant_url, timeout=cfg.MERCHANT_REQUEST_TIMEOUT, follow_redirects=True)
         server_http_status = server_resp.status_code
         agent_claims_failure = http_status >= 500
         server_sees_success = 200 <= server_http_status < 300
@@ -105,12 +119,12 @@ def claim():
             cid = existing_claim.get("claim_id")
             return jsonify({
                 "claim_id": cid,
-                "policy_id": existing_claim["policy_id"],
+                "policy_id": existing_claim.get("policy_id"),
                 "proof": existing_claim.get("proof"),
                 "public_inputs": existing_claim.get("public_inputs"),
                 "payout_amount": existing_claim.get("payout_amount"),
                 "refund_tx_hash": existing_claim.get("refund_tx_hash"),
-                "status": existing_claim["status"],
+                "status": existing_claim.get("status"),
                 "proof_url": f"/proofs/{cid}",
                 "idempotent": True,
                 "note": "This claim was already processed (idempotent response)"
@@ -168,7 +182,7 @@ def claim():
         raw_policy = ext.database.get_policy(policy_id)
         if not raw_policy:
             return jsonify({"error": "Policy not found"}), 404
-        if agent_address.lower() != raw_policy["agent_address"].lower():
+        if agent_address.lower() != raw_policy.get("agent_address", "").lower():
             return jsonify({
                 "error": "Unauthorized: You can only claim your own policies",
                 "policy_owner": raw_policy["agent_address"],
@@ -192,12 +206,12 @@ def claim():
 
     if async_mode:
         claim_id = str(uuid.uuid4())
-        http_body_hash = hashlib.sha256(http_response["body"].encode()).hexdigest()
+        http_body_hash = hashlib.sha256(http_response.get("body", "").encode()).hexdigest()
 
         claim_record = {
             "claim_id": claim_id, "policy_id": policy_id,
             "status": "processing", "http_response": http_response,
-            "http_status": http_response["status"],
+            "http_status": http_response.get("status"),
             "http_body_hash": http_body_hash,
             "http_headers": http_response.get("headers", {}),
             "agent_address": policy["agent_address"],
@@ -210,6 +224,7 @@ def claim():
             "server_verified": server_verified,
             "server_http_status": server_http_status,
             "merchant_url": merchant_url,
+            "webhook_url": webhook_url,
         }
 
         ext.database.create_claim(claim_id, claim_record)
@@ -268,7 +283,7 @@ def claim():
         return jsonify({"error": "No failure detected in HTTP response"}), 400
 
     claim_id = str(uuid.uuid4())
-    http_body_hash = hashlib.sha256(http_response["body"].encode()).hexdigest()
+    http_body_hash = hashlib.sha256(http_response.get("body", "").encode()).hexdigest()
 
     # Phase 3: Persist claim BEFORE issuing refund (crash-safe ordering)
     claim_record = {
@@ -288,6 +303,7 @@ def claim():
         "server_verified": server_verified,
         "server_http_status": server_http_status,
         "merchant_url": merchant_url,
+        "webhook_url": webhook_url,
     }
     ext.database.create_claim(claim_id, claim_record)
 
@@ -321,13 +337,13 @@ def claim():
 
 
 @claims_bp.route('/claims/<claim_id>', methods=['GET'])
-def get_claim_status(claim_id):
+def get_claim_status(claim_id: str) -> tuple[Response, int]:
     claim = ext.database.get_claim(claim_id)
     if not claim:
         return jsonify({"error": "Claim not found"}), 404
 
     return jsonify({
-        "claim_id": claim.get("claim_id", claim_id), "policy_id": claim["policy_id"],
+        "claim_id": claim.get("claim_id", claim_id), "policy_id": claim.get("policy_id"),
         "status": claim.get("status", "unknown"),
         "payout_amount": claim.get("payout_amount"),
         "refund_tx_hash": claim.get("refund_tx_hash"),
@@ -339,8 +355,8 @@ def get_claim_status(claim_id):
 
 
 @claims_bp.route('/proofs/<claim_id>', methods=['GET'])
-def get_proof(claim_id):
+def get_proof(claim_id: str) -> tuple[Response, int]:
     claim = ext.database.get_claim(claim_id)
     if not claim:
         return jsonify({"error": "Claim not found"}), 404
-    return jsonify(claim)
+    return jsonify(claim), 200

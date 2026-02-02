@@ -69,9 +69,9 @@ claim = agent_submit_claim(
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/insure` | POST | x402 | Buy an insurance policy |
-| `/claim` | POST | x402 | Submit a claim for a failed API call |
-| `/renew` | POST | x402 | Extend a policy's duration |
+| `/insure` | POST | x402 | Buy an insurance policy (supports `Idempotency-Key` header) |
+| `/claim` | POST | x402 | Submit a claim (supports `Idempotency-Key`, `webhook_url`, `?async=true`) |
+| `/renew` | POST | x402 | Extend a policy's duration (supports `Idempotency-Key` header) |
 | `/policies?wallet=0x...` | GET | Public | List policies by wallet address |
 | `/claims/<id>` | GET | Public | Check claim status |
 | `/proofs/<id>` | GET | Public | Get the cryptographic proof for a claim |
@@ -138,6 +138,11 @@ docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboar
 | `USDC_CONTRACT_ADDRESS` | USDC contract on Base (default: mainnet USDC) | No |
 | `DATABASE_URL` | PostgreSQL connection string (omit for JSON file storage) | No |
 | `CHAIN_ID` | Blockchain chain ID (default: 8453 for Base Mainnet) | No |
+| `MERCHANT_REQUEST_TIMEOUT` | Timeout for merchant URL re-fetch in seconds (default: 10) | No |
+| `CLAIM_TASK_TIMEOUT` | Max seconds for async claim processing (default: 300) | No |
+| `WEBHOOK_ENABLED` | Enable webhook delivery for async claims (default: true) | No |
+| `WEBHOOK_TIMEOUT` | Timeout for webhook POST in seconds (default: 10) | No |
+| `LOG_FORMAT` | `plain` or `json` for structured logging (default: plain) | No |
 
 ## Project structure
 
@@ -193,4 +198,10 @@ pytest tests/unit/ -v
 - Server-side failure verification: independently re-fetches merchant URLs to confirm downtime
 - SSRF prevention on merchant URLs (blocks private IPs, loopback, internal hostnames)
 - Atomic database operations prevent double-claiming
+- Request correlation IDs (`X-Request-ID`) on every request for traceability
+- Rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`) in all responses
+- Structured JSON logging available via `LOG_FORMAT=json`
+- Prometheus metrics for claims, refunds, and reserve ratio
+- Webhook URLs validated against SSRF before delivery
+- Stuck async claims auto-recover after configurable timeout
 - No mock modes — real blockchain transactions and real SNARK proofs only

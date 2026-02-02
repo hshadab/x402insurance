@@ -3,6 +3,7 @@ Flask application factory for x402 Insurance Service.
 """
 import json
 import os
+import uuid
 import logging
 from flask import Flask, request, g, jsonify, current_app
 from flask_limiter import Limiter
@@ -39,10 +40,25 @@ def create_app(env=None, dashboard_only=None):
     ext.config = cfg
 
     # Logging
-    logging.basicConfig(
-        level=cfg.LOG_LEVEL,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    from core.utils import RequestIDFilter
+    log_format = os.getenv("LOG_FORMAT", "plain")
+    if log_format == "json":
+        from core.utils import JSONLogFormatter
+        handler = logging.StreamHandler()
+        handler.setFormatter(JSONLogFormatter())
+        logging.root.handlers = [handler]
+        logging.root.setLevel(cfg.LOG_LEVEL)
+    else:
+        logging.basicConfig(
+            level=cfg.LOG_LEVEL,
+            format='%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] %(message)s'
+        )
+    # Add filter to root logger and all its handlers
+    req_filter = RequestIDFilter()
+    root_logger = logging.getLogger()
+    root_logger.addFilter(req_filter)
+    for handler in root_logger.handlers:
+        handler.addFilter(req_filter)
     logger = logging.getLogger("x402insurance")
 
     # Sentry
@@ -80,6 +96,7 @@ def create_app(env=None, dashboard_only=None):
 
     # Rate Limiting
     if cfg.RATE_LIMIT_ENABLED and not dashboard_only:
+        app.config['RATELIMIT_HEADERS_ENABLED'] = True
         ext.limiter = Limiter(
             app=app,
             key_func=get_remote_address,
@@ -194,6 +211,11 @@ def create_app(env=None, dashboard_only=None):
     app.register_blueprint(claims_bp)
     app.register_blueprint(verify_bp)
 
+    # Before request: assign request ID
+    @app.before_request
+    def assign_request_id():
+        g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+
     # Before request: capture payment headers
     @app.before_request
     def handle_x402_payment():
@@ -205,9 +227,14 @@ def create_app(env=None, dashboard_only=None):
             )
             g.payer_header = request.headers.get('X-Payer') or request.headers.get('X-FROM-ADDRESS')
 
-    # After request: metrics
+    # After request: metrics and headers
     @app.after_request
     def after_request(resp):
+        # Inject request ID header
+        request_id = getattr(g, 'request_id', None)
+        if request_id:
+            resp.headers['X-Request-ID'] = request_id
+
         try:
             if request.endpoint == 'policies.insure' and resp.status_code == 201:
                 ext.policies_created_total.inc()

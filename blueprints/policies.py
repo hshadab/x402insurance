@@ -7,7 +7,7 @@ import hashlib
 import logging
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
-from flask import Blueprint, request, jsonify, g, current_app
+from flask import Blueprint, request, jsonify, g, current_app, Response
 from core.utils import to_micro, iso_utc_now, parse_utc
 import extensions as ext
 from functools import wraps
@@ -18,7 +18,7 @@ logger = logging.getLogger("x402insurance")
 
 @policies_bp.route('/insure', methods=['POST'])
 @ext.limiter.limit(lambda: current_app.config["RATE_LIMIT_INSURE"])
-def insure():
+def insure() -> tuple[Response, int]:
     # Apply rate limit if real limiter
     cfg = ext.config
     data = request.json or {}
@@ -34,6 +34,24 @@ def insure():
 
     premium = float(Decimal(str(coverage_amount)) * Decimal(str(current_app.config["PREMIUM_PERCENTAGE"])))
     premium_units = to_micro(premium)
+
+    # Idempotency check
+    idempotency_key = request.headers.get('Idempotency-Key')
+    if idempotency_key:
+        existing_policy = ext.database.get_policy_by_idempotency_key(idempotency_key)
+        if existing_policy:
+            return jsonify({
+                "policy_id": existing_policy.get("policy_id"),
+                "agent_address": existing_policy.get("agent_address"),
+                "coverage_amount": existing_policy.get("coverage_amount"),
+                "premium": existing_policy.get("premium"),
+                "status": existing_policy.get("status"),
+                "expires_at": existing_policy.get("expires_at"),
+                "settlement_tx": existing_policy.get("settlement_tx"),
+                "settlement_status": existing_policy.get("settlement_status"),
+                "idempotent": True,
+                "note": "This policy was already created (idempotent response)"
+            }), 200
 
     payment_header = getattr(g, 'payment_header', None)
     payer_header = getattr(g, 'payer_header', None)
@@ -135,6 +153,7 @@ def insure():
         "expires_at": (datetime.now(timezone.utc) + timedelta(hours=current_app.config["POLICY_DURATION_HOURS"])).isoformat(),
         "settlement_tx": settlement_tx,
         "settlement_status": settlement_status,
+        "idempotency_key": idempotency_key,
     }
 
     success = ext.database.create_policy(policy_id, policy)
@@ -152,7 +171,7 @@ def insure():
 
 
 @policies_bp.route('/policies', methods=['GET'])
-def get_policies():
+def get_policies() -> tuple[Response, int]:
     wallet_address = request.args.get('wallet')
     if not wallet_address:
         return jsonify({"error": "wallet parameter required"}), 400
@@ -188,11 +207,17 @@ def get_policies():
 
 @policies_bp.route('/renew', methods=['POST'])
 @ext.limiter.limit(lambda: current_app.config["RATE_LIMIT_RENEW"])
-def renew_policy():
+def renew_policy() -> tuple[Response, int]:
     cfg = ext.config
     data = request.json
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
     policy_id = data.get('policy_id')
     extend_hours = data.get('extend_hours', 24)
+
+    # Idempotency check for renewals (use policy_id + extend_hours as composite key)
+    idempotency_key = request.headers.get('Idempotency-Key')
 
     if not policy_id:
         return jsonify({"error": "Missing policy_id"}), 400
@@ -203,16 +228,16 @@ def renew_policy():
 
     if not policy:
         return jsonify({"error": "Policy not found"}), 404
-    if policy['status'] != 'active':
-        return jsonify({"error": f"Can only renew active policies (current status: {policy['status']})"}), 400
+    if policy.get('status') != 'active':
+        return jsonify({"error": f"Can only renew active policies (current status: {policy.get('status')})"}), 400
 
-    expires_at = parse_utc(policy["expires_at"])
+    expires_at = parse_utc(policy.get("expires_at", ""))
     if expires_at < datetime.now(timezone.utc):
         return jsonify({"error": "Cannot renew expired policy. Please purchase a new policy."}), 400
 
     hours_per_day = 24
     days_extended = extend_hours / hours_per_day
-    renewal_fee = policy['coverage_amount'] * current_app.config["PREMIUM_PERCENTAGE"] * days_extended
+    renewal_fee = policy.get('coverage_amount', 0) * current_app.config["PREMIUM_PERCENTAGE"] * days_extended
     renewal_fee_units = to_micro(renewal_fee)
 
     payment_header = (
@@ -233,7 +258,7 @@ def renew_policy():
             "resource": {"url": "/renew", "method": "POST"},
             "policy_id": policy_id, "extend_hours": extend_hours,
             "renewal_fee": renewal_fee, "renewal_fee_display": f"{renewal_fee} USDC",
-            "current_expires_at": policy['expires_at'],
+            "current_expires_at": policy.get('expires_at'),
             "new_expires_at": (expires_at + timedelta(hours=extend_hours)).isoformat()
         }
         headers = {
@@ -256,7 +281,7 @@ def renew_policy():
             "pay_to": ext.BACKEND_ADDRESS
         }), 402
 
-    if payment_details.payer.lower() != policy['agent_address'].lower():
+    if payment_details.payer.lower() != policy.get('agent_address', '').lower():
         return jsonify({"error": "Only policy owner can renew policy"}), 403
 
     # Settle renewal payment on-chain via facilitator
@@ -302,7 +327,7 @@ def renew_policy():
         "renewal_fee": renewal_fee,
         "renewal_fee_display": f"{renewal_fee} USDC",
         "renewal_count": renewal_count,
-        "total_paid": policy['premium'] + total_renewal_fees,
+        "total_paid": policy.get('premium', 0) + total_renewal_fees,
         "status": "active",
         "message": f"Policy successfully extended by {extend_hours} hours"
     }), 200
