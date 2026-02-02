@@ -191,23 +191,26 @@ def health() -> tuple[Response, int]:
         health_data["checks"]["payment_verifier"] = {"status": "error", "error": str(e)}
         is_degraded = True
 
-    # 7. Redis Check (for Huey task queue)
-    try:
-        import redis
-        redis_url = cfg.REDIS_URL if hasattr(cfg, 'REDIS_URL') else "redis://localhost:6379/0"
-        redis_start = time.monotonic()
-        r = redis.from_url(redis_url, socket_connect_timeout=3)
-        r.ping()
-        redis_latency_ms = round((time.monotonic() - redis_start) * 1000, 1)
-        health_data["checks"]["redis"] = {
-            "status": "connected",
-            "latency_ms": redis_latency_ms,
-        }
-    except ImportError:
-        health_data["checks"]["redis"] = {"status": "skipped", "info": "redis package not installed"}
-    except Exception as e:
-        health_data["checks"]["redis"] = {"status": "error", "error": str(e)}
-        is_degraded = True
+    # 7. Redis Check (for Huey task queue — not needed in dashboard-only mode)
+    if current_app.config.get('DASHBOARD_ONLY'):
+        health_data["checks"]["redis"] = {"status": "skipped", "info": "Not required in dashboard mode"}
+    else:
+        try:
+            import redis
+            redis_url = cfg.REDIS_URL if hasattr(cfg, 'REDIS_URL') else "redis://localhost:6379/0"
+            redis_start = time.monotonic()
+            r = redis.from_url(redis_url, socket_connect_timeout=3)
+            r.ping()
+            redis_latency_ms = round((time.monotonic() - redis_start) * 1000, 1)
+            health_data["checks"]["redis"] = {
+                "status": "connected",
+                "latency_ms": redis_latency_ms,
+            }
+        except ImportError:
+            health_data["checks"]["redis"] = {"status": "skipped", "info": "redis package not installed"}
+        except Exception as e:
+            health_data["checks"]["redis"] = {"status": "error", "error": str(e)}
+            is_degraded = True
 
     # 8. RPC Latency Measurement
     if include_blockchain and ext.blockchain:
