@@ -117,7 +117,12 @@ jobs:
           fi
 
       - name: Build Docker image
-        run: docker build -t x402-insurance-test .
+        run: |
+          if [ -f "jolt-atlas/jolt_claims_prover" ] && [ -f "models/claim_classifier.onnx" ]; then
+            docker build -t x402-insurance-test .
+          else
+            echo "Skipping: Jolt binary and/or ONNX model not in repo (large binaries, only on deployment machine)"
+          fi
 
   lint-dockerfile:
     runs-on: ubuntu-latest
