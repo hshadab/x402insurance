@@ -1,6 +1,6 @@
 # Core dependencies
 flask==3.0.0
-web3==6.11.0
+web3>=7.0.0
 python-dotenv==1.0.0
 httpx==0.25.1
 gunicorn==21.2.0
@@ -19,8 +19,8 @@ flask-cors==4.0.0
 # Database (PostgreSQL support - optional)
 psycopg2-binary==2.9.9
 
-# Enhanced crypto/signing
-eth-account==0.10.0
+# Enhanced crypto/signing (version driven by x402[evm])
+eth-account>=0.12.0
 
 # Background jobs
 huey==2.5.0
