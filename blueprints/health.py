@@ -70,19 +70,27 @@ def health() -> tuple[Response, int]:
         health_data["checks"]["jolt_atlas"] = {"status": "error", "error": str(e)}
         is_degraded = True
 
-    # 2. Blockchain RPC Check
-    if include_blockchain:
+    # 2. Blockchain RPC Check + 3. Wallet Check
+    # Use ext.blockchain if available, otherwise fall back to direct RPC (dashboard mode)
+    _w3 = None
+    if ext.blockchain:
+        _w3 = ext.blockchain.w3
+    elif hasattr(cfg, 'BASE_RPC_URL') and cfg.BASE_RPC_URL:
+        from web3 import Web3
+        _w3 = Web3(Web3.HTTPProvider(cfg.BASE_RPC_URL))
+
+    if _w3:
         try:
-            bc_connected = ext.blockchain.w3.is_connected() if ext.blockchain else False
+            bc_connected = _w3.is_connected()
             if bc_connected:
                 try:
-                    chain_id = ext.blockchain.w3.eth.chain_id
-                    block_number = ext.blockchain.w3.eth.block_number
-                    gas_price = ext.blockchain.w3.eth.gas_price
+                    chain_id = _w3.eth.chain_id
+                    block_number = _w3.eth.block_number
+                    gas_price = _w3.eth.gas_price
                     health_data["checks"]["blockchain"] = {
                         "status": "connected", "chain_id": chain_id,
                         "latest_block": block_number,
-                        "gas_price_gwei": float(ext.blockchain.w3.from_wei(gas_price, 'gwei'))
+                        "gas_price_gwei": float(_w3.from_wei(gas_price, 'gwei'))
                     }
                 except Exception:
                     health_data["checks"]["blockchain"] = {"status": "connected"}
@@ -92,21 +100,32 @@ def health() -> tuple[Response, int]:
         except Exception as e:
             health_data["checks"]["blockchain"] = {"status": "error", "error": str(e)}
             is_healthy = False
-    else:
-        health_data["checks"]["blockchain"] = {"status": "skipped", "info": "Use ?full=true for blockchain checks"}
 
-    # 3. Wallet Check
-    if include_blockchain:
+        # Wallet check
         try:
+            from web3 import Web3 as _Web3
             wallet_address = cfg.BACKEND_WALLET_ADDRESS
-            eth_balance = ext.blockchain.w3.eth.get_balance(wallet_address)
-            usdc_balance = ext.blockchain.get_balance()
+            eth_balance = _w3.eth.get_balance(_Web3.to_checksum_address(wallet_address))
+            # USDC balance via contract call
+            usdc_address = current_app.config.get(
+                "USDC_CONTRACT_ADDRESS", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+            )
+            _balance_abi = [{"constant": True, "inputs": [{"name": "_owner", "type": "address"}],
+                            "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}],
+                            "type": "function"}]
+            usdc_contract = _w3.eth.contract(
+                address=_Web3.to_checksum_address(usdc_address), abi=_balance_abi
+            )
+            usdc_raw = usdc_contract.functions.balanceOf(
+                _Web3.to_checksum_address(wallet_address)
+            ).call()
+            usdc_balance = usdc_raw / 1_000_000
             health_data["checks"]["wallet"] = {
                 "status": "configured", "address": wallet_address,
-                "eth_balance": float(ext.blockchain.w3.from_wei(eth_balance, 'ether')),
+                "eth_balance": float(_w3.from_wei(eth_balance, 'ether')),
                 "usdc_balance": usdc_balance
             }
-            if eth_balance < ext.blockchain.w3.to_wei(0.001, 'ether'):
+            if eth_balance < _w3.to_wei(0.001, 'ether'):
                 health_data["checks"]["wallet"]["warning"] = "Low ETH balance for gas"
                 is_degraded = True
             if usdc_balance < 0.1:
@@ -116,6 +135,7 @@ def health() -> tuple[Response, int]:
             health_data["checks"]["wallet"] = {"status": "error", "error": str(e)}
             is_degraded = True
     else:
+        health_data["checks"]["blockchain"] = {"status": "skipped", "info": "No RPC URL configured"}
         health_data["checks"]["wallet"] = {"status": "skipped"}
 
     # 4. Database Check
@@ -133,13 +153,16 @@ def health() -> tuple[Response, int]:
         is_healthy = False
 
     # 5. Reserve Health Check
-    if include_blockchain:
+    if _w3 and ext.database:
         try:
             policies = ext.database.get_all_policies()
             active_policies = [p for p in policies.values() if p.get('status') == 'active']
             total_coverage = sum(p.get('coverage_amount', 0) for p in active_policies)
             if total_coverage > 0:
-                usdc_balance = ext.blockchain.get_balance()
+                # Reuse wallet USDC balance if already fetched
+                usdc_balance = health_data["checks"].get("wallet", {}).get("usdc_balance")
+                if usdc_balance is None:
+                    usdc_balance = ext.blockchain.get_balance() if ext.blockchain else 0
                 reserve_ratio = usdc_balance / total_coverage
                 min_reserve_ratio = cfg.MIN_RESERVE_RATIO
                 health_data["checks"]["reserves"] = {
@@ -224,15 +247,6 @@ def health() -> tuple[Response, int]:
             }
         except Exception as e:
             health_data["checks"]["rpc_latency"] = {"status": "error", "error": str(e)}
-
-    # 9. Monitoring Check
-    try:
-        sentry_enabled = bool(cfg.SENTRY_DSN)
-        health_data["checks"]["monitoring"] = {"status": "enabled" if sentry_enabled else "disabled", "sentry": sentry_enabled}
-        if not sentry_enabled and os.getenv('ENV') == 'production':
-            health_data["checks"]["monitoring"]["warning"] = "Sentry recommended for production"
-    except Exception as e:
-        health_data["checks"]["monitoring"] = {"status": "error", "error": str(e)}
 
     if not is_healthy:
         health_data["status"] = "unhealthy"
