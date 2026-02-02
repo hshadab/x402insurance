@@ -95,6 +95,7 @@
         .tag-expired,.tag-denied,.tag-rejected{background:var(--red-dim);color:var(--red);}
         .tag-pending,.tag-processing{background:var(--yellow-dim);color:var(--yellow);}
         .tag-approved,.tag-paid{background:var(--green-dim);color:var(--green);}
+        .tag-refund_failed,.tag-failed{background:var(--red-dim);color:var(--red);}
         .tag-verified{background:var(--accent-dim);color:var(--accent);}
         .mono{font-family:var(--mono);font-size:11px;}
         .truncate{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;}
@@ -318,10 +319,10 @@
         <div class="card-header collapse-toggle open" onclick="this.classList.toggle('open');this.nextElementSibling.style.display=this.classList.contains('open')?'':'none'"><span>How It Works</span><span class="chevron">&#9656;</span></div>
         <div class="card-body">
             <div class="hiw-grid">
-                <div class="hiw-step"><span class="step-num">1</span><h4>Buy Coverage</h4><p>Agent sends POST /insure with x402 payment. Premium is 1% of coverage. Settled on-chain via x402.org facilitator.</p></div>
+                <div class="hiw-step"><span class="step-num">1</span><h4>Buy Coverage</h4><p>Agent sends POST /insure with x402 payment. Premium is 1% of coverage. Payment settled on-chain before policy is created. Reserve solvency verified.</p></div>
                 <div class="hiw-step"><span class="step-num">2</span><h4>API Fails</h4><p>Merchant returns HTTP 500+ or empty response. Agent captures full HTTP response as evidence.</p></div>
-                <div class="hiw-step"><span class="step-num">3</span><h4>Claim &amp; Prove</h4><p>POST /claim triggers server re-fetch for fraud detection, then <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> generates a zkML proof over ONNX model inference.</p></div>
-                <div class="hiw-step"><span class="step-num">4</span><h4>Verify &amp; Refund</h4><p>zkML proof verified. If valid, USDC refund sent on Base Mainnet. Proof auditable via POST /verify.</p></div>
+                <div class="hiw-step"><span class="step-num">3</span><h4>Claim &amp; Prove</h4><p>POST /claim settles claim fee, triggers server re-fetch for fraud detection, then <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> generates a zkML proof over ONNX model inference.</p></div>
+                <div class="hiw-step"><span class="step-num">4</span><h4>Verify &amp; Refund</h4><p>zkML proof verified and claim persisted. Then USDC refund sent on Base Mainnet. Crash-safe: claim record exists before refund. Proof auditable via POST /verify.</p></div>
             </div>
         </div>
     </div>

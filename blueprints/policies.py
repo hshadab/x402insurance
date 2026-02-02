@@ -93,12 +93,35 @@ def insure():
         payment_header=payment_header,
         payment_requirements=payment_requirements,
     )
-    if settle_result and settle_result.get("success") is not False:
-        settlement_tx = settle_result.get("transaction")
-        settlement_status = "settled"
-        logger.info("Premium settled on-chain: tx=%s", settlement_tx)
-    else:
-        logger.warning("Settlement failed after verification for premium=%s; marking pending", premium_units)
+    if not settle_result or settle_result.get("success") is False:
+        logger.warning("Premium settlement failed for premium=%s units", premium_units)
+        return jsonify({"error": "Premium payment settlement failed. Please retry."}), 402
+
+    settlement_tx = settle_result.get("transaction")
+    settlement_status = "settled"
+    logger.info("Premium settled on-chain: tx=%s", settlement_tx)
+
+    # Check that the refund pool can cover this policy
+    coverage_units = to_micro(coverage_amount)
+    try:
+        wallet_balance = ext.blockchain.get_balance()
+        # Sum outstanding active policy liabilities
+        all_policies = ext.database.get_all_policies()
+        outstanding_liability = sum(
+            p.get('coverage_amount_units', 0)
+            for p in all_policies.values()
+            if p.get('status') == 'active'
+        )
+        if wallet_balance < outstanding_liability + coverage_units:
+            logger.warning(
+                "Insufficient reserves: balance=%d, liability=%d, requested=%d",
+                wallet_balance, outstanding_liability, coverage_units
+            )
+            return jsonify({
+                "error": "Service temporarily unable to underwrite this policy (insufficient reserves)",
+            }), 503
+    except Exception as e:
+        logger.warning("Reserve check failed (allowing policy): %s", e)
 
     policy_id = str(uuid.uuid4())
     merchant_url_hash = hashlib.sha256(merchant_url.encode()).hexdigest()
@@ -248,12 +271,13 @@ def renew_policy():
         payment_header=payment_header,
         payment_requirements=payment_requirements,
     )
-    if settle_result and settle_result.get("success") is not False:
-        renewal_settlement_tx = settle_result.get("transaction")
-        renewal_settlement_status = "settled"
-        logger.info("Renewal settled on-chain: tx=%s", renewal_settlement_tx)
-    else:
-        logger.warning("Renewal settlement failed; marking pending for policy=%s", policy_id)
+    if not settle_result or settle_result.get("success") is False:
+        logger.warning("Renewal settlement failed for policy=%s", policy_id)
+        return jsonify({"error": "Renewal payment settlement failed. Please retry."}), 402
+
+    renewal_settlement_tx = settle_result.get("transaction")
+    renewal_settlement_status = "settled"
+    logger.info("Renewal settled on-chain: tx=%s", renewal_settlement_tx)
 
     old_expires_at = expires_at
     new_expires_at = old_expires_at + timedelta(hours=extend_hours)

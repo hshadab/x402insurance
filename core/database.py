@@ -91,6 +91,11 @@ class DatabaseClient:
     def cleanup_nonces(self, max_age_seconds: int = 3600) -> int:
         return self.backend.cleanup_nonces(max_age_seconds)
 
+    # Recovery
+    def recover_stuck_policies(self, max_age_seconds: int = 600) -> int:
+        """Reset policies stuck in 'claimed' status with no successful claim back to 'active'."""
+        return self.backend.recover_stuck_policies(max_age_seconds)
+
     # Cleanup
     def cleanup_expired_policies(self) -> int:
         return self.backend.cleanup_expired_policies()
@@ -346,6 +351,48 @@ class JSONFileBackend:
             if old:
                 self._atomic_write(self.nonces_file, json.dumps(cache, indent=2, default=str))
             return len(old)
+        finally:
+            self._release_lock(lock_fd)
+
+    def recover_stuck_policies(self, max_age_seconds: int = 600) -> int:
+        """Reset policies stuck in 'claimed' with no paid/approved claim back to 'active'."""
+        lock_fd = None
+        try:
+            lock_fd, _ = self._acquire_lock(self.policies_file)
+            policies = self._load_json_raw(self.policies_file)
+            claims = self._load_json(self.claims_file)
+            current_time = datetime.now(timezone.utc)
+            recovered = 0
+
+            # Build set of policy_ids that have an active claim (processing/approved/paid)
+            active_claim_policies = set()
+            for claim in claims.values():
+                if claim.get('status') in ('processing', 'approved', 'paid'):
+                    active_claim_policies.add(claim.get('policy_id'))
+
+            for pid, policy in policies.items():
+                if policy.get('status') != 'claimed':
+                    continue
+                if pid in active_claim_policies:
+                    continue
+                # Check if policy has been stuck for longer than max_age_seconds
+                try:
+                    expires_at = datetime.fromisoformat(policy.get('expires_at', '').replace('Z', '+00:00'))
+                    if expires_at.tzinfo is None:
+                        expires_at = expires_at.replace(tzinfo=timezone.utc)
+                    if expires_at > current_time:
+                        policy['status'] = 'active'
+                        recovered += 1
+                except (ValueError, TypeError):
+                    pass
+
+            if recovered > 0:
+                self._atomic_write(self.policies_file, json.dumps(policies, indent=2, default=str))
+            logger.info("Recovered %d stuck policies", recovered)
+            return recovered
+        except Exception as e:
+            logger.exception("Failed to recover stuck policies: %s", e)
+            return 0
         finally:
             self._release_lock(lock_fd)
 
@@ -726,6 +773,30 @@ class PostgreSQLBackend:
                     return cur.rowcount
         except Exception as e:
             logger.exception("Failed to cleanup nonces: %s", e)
+            return 0
+
+    def recover_stuck_policies(self, max_age_seconds: int = 600) -> int:
+        """Reset policies stuck in 'claimed' with no paid/approved claim back to 'active'."""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE policies p
+                        SET status = 'active', updated_at = NOW()
+                        WHERE p.status = 'claimed'
+                          AND p.expires_at > NOW()
+                          AND NOT EXISTS (
+                              SELECT 1 FROM claims c
+                              WHERE c.policy_id = p.policy_id
+                                AND c.status IN ('processing', 'approved', 'paid')
+                          )
+                          AND p.updated_at < NOW() - INTERVAL '%s seconds'
+                    """, (max_age_seconds,))
+                    count = cur.rowcount
+            logger.info("Recovered %d stuck policies", count)
+            return count
+        except Exception as e:
+            logger.exception("Failed to recover stuck policies: %s", e)
             return 0
 
     def cleanup_expired_policies(self) -> int:

@@ -23,11 +23,16 @@ def process_claim_async(claim_id: str):
     except Exception as e:
         logger.error("Error processing claim async: %s, error: %s", claim_id, str(e), exc_info=True)
         try:
+            claim = ext.database.get_claim(claim_id)
             ext.database.update_claim(claim_id, {
                 'status': 'failed',
                 'error': str(e),
                 'failed_at': iso_utc_now(),
             })
+            # Unlock the policy so the agent can retry
+            if claim and claim.get('policy_id'):
+                ext.database.update_policy(claim['policy_id'], {'status': 'active'})
+                logger.info("Unlocked policy %s after async claim failure", claim['policy_id'])
         except Exception as save_error:
             logger.error("Failed to save error status: %s", str(save_error))
 
@@ -143,6 +148,20 @@ def claim():
             logger.warning("Claim payment verification failed for policy_id=%s", policy_id)
             return jsonify({"error": "Payment verification failed"}), 402
 
+        # Settle the claim fee on-chain
+        claim_payment_requirements = {
+            "scheme": "exact", "network": cfg.CAIP2_NETWORK,
+            "maxAmountRequired": str(claim_fee_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
+            "payTo": ext.BACKEND_ADDRESS, "maxTimeoutSeconds": 60, "extra": {},
+        }
+        settle_result = ext.payment_verifier.settle_payment(
+            payment_header=payment_header,
+            payment_requirements=claim_payment_requirements,
+        )
+        if not settle_result or settle_result.get("success") is False:
+            logger.warning("Claim fee settlement failed for policy_id=%s", policy_id)
+            return jsonify({"error": "Claim fee payment settlement failed"}), 402
+
         agent_address = payment_details.payer
 
         # Verify ownership before locking the policy
@@ -249,40 +268,9 @@ def claim():
         return jsonify({"error": "No failure detected in HTTP response"}), 400
 
     claim_id = str(uuid.uuid4())
-
-    # Phase 3: Issue refund BEFORE persisting claim
-    try:
-        refund_tx_hash = ext.blockchain.issue_refund(
-            to_address=policy["agent_address"], amount=payout_amount_units
-        )
-    except Exception as e:
-        # Refund failed — persist claim with refund_failed status so it can be retried
-        http_body_hash = hashlib.sha256(http_response["body"].encode()).hexdigest()
-        claim_record = {
-            "claim_id": claim_id, "policy_id": policy_id,
-            "proof": proof_hex, "public_inputs": public_inputs,
-            "proof_generation_time_ms": gen_time_ms,
-            "verification_result": True,
-            "http_status": http_response["status"],
-            "http_body_hash": http_body_hash,
-            "http_headers": http_response.get("headers", {}),
-            "payout_amount": payout_amount, "payout_amount_units": payout_amount_units,
-            "refund_tx_hash": None,
-            "recipient_address": policy["agent_address"],
-            "status": "refund_failed", "created_at": iso_utc_now(),
-            "paid_at": None,
-            "idempotency_key": idempotency_key,
-            "error": str(e),
-            "server_verified": server_verified,
-            "server_http_status": server_http_status,
-            "merchant_url": merchant_url,
-        }
-        ext.database.create_claim(claim_id, claim_record)
-        return jsonify({"error": f"Refund failed: {str(e)}", "claim_id": claim_id, "status": "refund_failed"}), 500
-
-    # Refund succeeded — now persist
     http_body_hash = hashlib.sha256(http_response["body"].encode()).hexdigest()
 
+    # Phase 3: Persist claim BEFORE issuing refund (crash-safe ordering)
     claim_record = {
         "claim_id": claim_id, "policy_id": policy_id,
         "proof": proof_hex, "public_inputs": public_inputs,
@@ -292,16 +280,36 @@ def claim():
         "http_body_hash": http_body_hash,
         "http_headers": http_response.get("headers", {}),
         "payout_amount": payout_amount, "payout_amount_units": payout_amount_units,
-        "refund_tx_hash": refund_tx_hash,
+        "refund_tx_hash": None,
         "recipient_address": policy["agent_address"],
-        "status": "paid", "created_at": iso_utc_now(), "paid_at": iso_utc_now(),
+        "status": "approved", "created_at": iso_utc_now(),
+        "paid_at": None,
         "idempotency_key": idempotency_key,
         "server_verified": server_verified,
         "server_http_status": server_http_status,
         "merchant_url": merchant_url,
     }
-
     ext.database.create_claim(claim_id, claim_record)
+
+    # Phase 4: Issue refund
+    try:
+        refund_tx_hash = ext.blockchain.issue_refund(
+            to_address=policy["agent_address"], amount=payout_amount_units
+        )
+    except Exception as e:
+        ext.database.update_claim(claim_id, {
+            'status': 'refund_failed',
+            'error': str(e),
+            'failed_at': iso_utc_now(),
+        })
+        return jsonify({"error": f"Refund failed: {str(e)}", "claim_id": claim_id, "status": "refund_failed"}), 500
+
+    # Phase 5: Update claim with refund tx
+    ext.database.update_claim(claim_id, {
+        'status': 'paid',
+        'refund_tx_hash': refund_tx_hash,
+        'paid_at': iso_utc_now(),
+    })
 
     return jsonify({
         "claim_id": claim_id, "policy_id": policy_id,

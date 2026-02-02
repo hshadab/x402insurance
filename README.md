@@ -184,6 +184,10 @@ pytest tests/unit/ -v
 
 ## Security
 
+- All payments (premiums, claim fees, renewals) are settled on-chain before any state change — no "pending" payments
+- Claim records are persisted before issuing refunds, so a crash never loses a valid claim
+- Reserve solvency check on every new policy — rejects if wallet can't cover outstanding liabilities
+- Stuck policies auto-recover: if claim processing crashes, policies unlock after 10 minutes
 - All claim submissions require x402 payment authentication
 - Payments verified via the x402.org facilitator (signature, nonce, amount)
 - Server-side fraud detection: independently re-fetches merchant URLs

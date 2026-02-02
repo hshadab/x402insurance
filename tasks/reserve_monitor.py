@@ -67,6 +67,14 @@ class ReserveMonitor:
                 status = "healthy"
                 message = "Reserves sufficient"
 
+            # Opportunistically recover stuck policies during health checks
+            try:
+                recovered = self.database.recover_stuck_policies(max_age_seconds=600)
+                if recovered > 0:
+                    logger.info("Recovered %d stuck policies during reserve check", recovered)
+            except Exception as recover_err:
+                logger.warning("Policy recovery failed: %s", recover_err)
+
             result = {
                 "status": status,
                 "message": message,

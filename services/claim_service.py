@@ -75,7 +75,19 @@ def process_claim(claim_id: str) -> None:
         })
         return
 
-    # Phase 3: Issue refund BEFORE persisting success
+    # Phase 3: Persist proof data BEFORE issuing refund (crash-safe ordering)
+    ext.database.update_claim(claim_id, {
+        'proof': proof_hex,
+        'public_inputs': public_inputs,
+        'proof_generation_time_ms': gen_time_ms,
+        'verification_result': True,
+        'payout_amount': claim.get('coverage_amount'),
+        'payout_amount_units': claim['coverage_amount_units'],
+        'recipient_address': claim['agent_address'],
+        'status': 'approved',
+    })
+
+    # Phase 4: Issue refund
     logger.info("Issuing refund for claim: %s", claim_id)
     try:
         refund_tx_hash = ext.blockchain.issue_refund(
@@ -87,24 +99,13 @@ def process_claim(claim_id: str) -> None:
         ext.database.update_claim(claim_id, {
             'status': 'refund_failed',
             'error': str(refund_err),
-            'proof': proof_hex,
-            'public_inputs': public_inputs,
-            'proof_generation_time_ms': gen_time_ms,
-            'verification_result': True,
             'failed_at': iso_utc_now(),
         })
         return
 
-    # Phase 4: Persist success
+    # Phase 5: Mark as paid
     ext.database.update_claim(claim_id, {
-        'proof': proof_hex,
-        'public_inputs': public_inputs,
-        'proof_generation_time_ms': gen_time_ms,
-        'verification_result': True,
-        'payout_amount': claim.get('coverage_amount'),
-        'payout_amount_units': claim['coverage_amount_units'],
         'refund_tx_hash': refund_tx_hash,
-        'recipient_address': claim['agent_address'],
         'status': 'paid',
         'paid_at': iso_utc_now(),
     })

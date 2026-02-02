@@ -228,6 +228,14 @@ CHAIN_ID=84532
 
 ## Changelog
 
+**2026-02-02 (v2.4.0)**:
+- **Claim fee settlement**: Claim anti-spam fee is now settled on-chain (was verified but never collected)
+- **Settlement-before-creation**: Policies and renewals are only created after payment settlement succeeds (no more "pending" settlements)
+- **DB-before-refund atomicity**: Claim records are persisted before issuing refunds, preventing lost claims on crash
+- **Stuck policy recovery**: Policies stuck in "claimed" status with no active claim auto-recover after 10 minutes
+- **Reserve solvency check**: New policies rejected if wallet balance can't cover total outstanding liabilities
+- **Async claim error recovery**: Failed async claims now unlock the associated policy so agents can retry
+
 **2026-01-31 (v2.3.1)**:
 - **SSRF Prevention**: `merchant_url` is now validated against private IPs, loopback addresses, link-local ranges, AWS metadata endpoints, and non-HTTP schemes before server-side re-fetch
 - **Claim auth before policy lock**: Payment authentication now runs before `claim_policy()` to prevent unnecessary policy locking on auth failure
