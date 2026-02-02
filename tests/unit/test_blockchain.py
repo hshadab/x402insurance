@@ -4,7 +4,7 @@ Mock mode removed — private key is now required.
 """
 import pytest
 from unittest.mock import patch, MagicMock
-from blockchain import BlockchainClient
+from core.blockchain import BlockchainClient
 
 
 class TestBlockchainClient:

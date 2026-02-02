@@ -5,7 +5,7 @@ import pytest
 import tempfile
 import shutil
 from pathlib import Path
-from database import JSONFileBackend
+from core.database import JSONFileBackend
 
 
 class TestJSONFileBackend:

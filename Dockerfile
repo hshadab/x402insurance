@@ -12,9 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY requirements-prod.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements-prod.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime (ARM64)
 FROM public.ecr.aws/docker/library/python:3.11-slim
@@ -42,7 +42,7 @@ WORKDIR /app
 # Copy pre-built x86_64 Jolt Atlas binary, ONNX model, and SRS file
 COPY --chown=x402user:x402user jolt-atlas/jolt_claims_prover /app/jolt-atlas/jolt_claims_prover.x86_64
 COPY --chown=x402user:x402user models/claim_classifier.onnx /app/models/claim_classifier.onnx
-COPY --chown=x402user:x402user dory_srs_22_variables.srs /app/dory_srs_22_variables.srs
+COPY --chown=x402user:x402user jolt-atlas/dory_srs_22_variables.srs /app/jolt-atlas/dory_srs_22_variables.srs
 
 # Create a wrapper script that runs the x86_64 binary via QEMU
 RUN printf '#!/bin/sh\nexec /usr/bin/qemu-x86_64 -L /usr/x86_64-linux-gnu /app/jolt-atlas/jolt_claims_prover.x86_64 "$@"\n' \

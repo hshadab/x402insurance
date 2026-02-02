@@ -2,7 +2,7 @@
 Claim processing logic shared between synchronous and async paths.
 """
 import logging
-from utils import to_micro, iso_utc_now
+from core.utils import to_micro, iso_utc_now
 import extensions as ext
 
 logger = logging.getLogger("x402insurance.claim_service")

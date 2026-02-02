@@ -43,7 +43,7 @@ def client(app):
 
 @pytest.fixture(scope="module")
 def proof_client():
-    from proof_client import JoltProofClient
+    from core.proof_client import JoltProofClient
     return JoltProofClient(
         binary_path="./jolt-atlas/jolt_claims_prover",
         timeout=120,

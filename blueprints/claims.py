@@ -8,7 +8,7 @@ import logging
 import httpx
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify, g, current_app
-from utils import to_micro, iso_utc_now, parse_utc, validate_merchant_url
+from core.utils import to_micro, iso_utc_now, parse_utc, validate_merchant_url
 import extensions as ext
 
 claims_bp = Blueprint('claims', __name__)

@@ -20,7 +20,7 @@ from datetime import datetime, timezone, timedelta
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from database import JSONFileBackend, DatabaseClient
+from core.database import JSONFileBackend, DatabaseClient
 
 
 class TestFileLocking:
@@ -74,7 +74,7 @@ class TestSQLInjectionPrevention:
     """Test SQL injection prevention in PostgreSQL backend"""
 
     def test_policy_update_whitelist(self):
-        from database import PostgreSQLBackend
+        from core.database import PostgreSQLBackend
 
         valid_updates = {'status': 'active', 'renewal_count': 1}
         invalid_columns = set(valid_updates.keys()) - PostgreSQLBackend.ALLOWED_POLICY_UPDATE_COLUMNS
@@ -88,7 +88,7 @@ class TestSQLInjectionPrevention:
         assert len(invalid_columns) > 0, "SQL injection attempt not detected"
 
     def test_claim_update_whitelist(self):
-        from database import PostgreSQLBackend
+        from core.database import PostgreSQLBackend
 
         valid_updates = {'status': 'paid', 'payout_amount': 10000}
         invalid_columns = set(valid_updates.keys()) - PostgreSQLBackend.ALLOWED_CLAIM_UPDATE_COLUMNS

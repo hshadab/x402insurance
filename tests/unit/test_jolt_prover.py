@@ -11,7 +11,7 @@ class TestJoltProverBinaryRequired:
     def test_missing_binary_raises_error(self):
         """Without a binary, JoltProofClient should raise RuntimeError."""
         with patch("proof_client.os.path.exists", return_value=False):
-            from proof_client import JoltProofClient
+            from core.proof_client import JoltProofClient
             with pytest.raises(RuntimeError, match="binary not found"):
                 JoltProofClient(binary_path="/nonexistent/path")
 
@@ -19,7 +19,7 @@ class TestJoltProverBinaryRequired:
         """Binary exists but not executable should raise RuntimeError."""
         with patch("proof_client.os.path.exists", return_value=True), \
              patch("proof_client.os.access", return_value=False):
-            from proof_client import JoltProofClient
+            from core.proof_client import JoltProofClient
             with pytest.raises(RuntimeError, match="not executable"):
                 JoltProofClient(binary_path="/some/path")
 
@@ -27,7 +27,7 @@ class TestJoltProverBinaryRequired:
         """With a valid binary, JoltProofClient should initialize."""
         with patch("proof_client.os.path.exists", return_value=True), \
              patch("proof_client.os.access", return_value=True):
-            from proof_client import JoltProofClient
+            from core.proof_client import JoltProofClient
             client = JoltProofClient(binary_path="./jolt-atlas/jolt_claims_prover")
             assert client.binary_path == "./jolt-atlas/jolt_claims_prover"
 
@@ -35,7 +35,7 @@ class TestJoltProverBinaryRequired:
         """Proof output should use jolt-atlas-snark proof system."""
         with patch("proof_client.os.path.exists", return_value=True), \
              patch("proof_client.os.access", return_value=True):
-            from proof_client import JoltProofClient
+            from core.proof_client import JoltProofClient
             client = JoltProofClient(binary_path="./jolt-atlas/jolt_claims_prover")
 
             proof_b64, public_inputs, gen_time = client.generate_proof(

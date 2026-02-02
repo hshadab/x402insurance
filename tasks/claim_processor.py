@@ -23,7 +23,7 @@ def process_claim_task(claim_id: str):
         # Mark claim as failed on final retry
         try:
             import extensions as ext
-            from utils import iso_utc_now
+            from core.utils import iso_utc_now
             claim = ext.database.get_claim(claim_id) if ext.database else None
             if claim and claim.get('status') == 'processing':
                 ext.database.update_claim(claim_id, {

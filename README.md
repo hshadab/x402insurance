@@ -147,7 +147,16 @@ dashboard_server.py      Dashboard-only entry point (port 8000, App Runner)
 agent_helpers.py         x402 V2 payment helpers for autonomous agents
 app.py                   Flask application factory (supports dashboard_only mode)
 config.py                Environment-based configuration
-extensions.py            Shared service instances (database, blockchain, prover, etc.)
+extensions.py            Shared service instances
+
+core/
+  blockchain.py          USDC refunds on Base via web3.py
+  database.py            JSON file backend (dev) or PostgreSQL (prod)
+  proof_client.py        Jolt Atlas SNARK proof generation and verification
+  utils.py               Monetary helpers, URL validation, datetime utils
+
+auth/
+  payment_verifier.py    x402 V2 payment verification via facilitator
 
 blueprints/
   discovery.py           GET / (dashboard), /.well-known/agent-card.json, /api/*
@@ -156,12 +165,12 @@ blueprints/
   claims.py              POST /claim, GET /claims/<id>, GET /proofs/<id>
   verify.py              POST /verify
 
-auth/payment_verifier.py   x402 V2 payment verification via facilitator
-blockchain.py              USDC refunds on Base via web3.py
-database.py                JSON file backend (dev) or PostgreSQL (prod)
-proof_client.py            Jolt Atlas SNARK proof generation and verification
+services/
+  claim_service.py       Shared claim processing logic (proof + refund)
 
+tasks/                   Huey background jobs (async claims, reserve monitoring)
 static/dashboard.html    Single-page dashboard UI
+jolt-atlas/              Jolt Atlas prover binary + SRS file
 Dockerfile               Full service image (Jolt binary + QEMU)
 Dockerfile.dashboard     Lightweight dashboard image for App Runner
 ```

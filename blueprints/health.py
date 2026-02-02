@@ -4,7 +4,7 @@ Health blueprint — /health, /ping, /invocations, /api/reserves, /metrics
 import os
 import logging
 from flask import Blueprint, request, jsonify, current_app
-from utils import iso_utc_now
+from core.utils import iso_utc_now
 import extensions as ext
 
 health_bp = Blueprint('health', __name__)

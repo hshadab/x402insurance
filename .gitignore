@@ -1,87 +1,74 @@
-
-# Data files (JSON storage - regenerated on server)
-# Database
-# Environment - CRITICAL: Never commit these files!
-# IDEs
-# Logs
-# NOTE: If .env was previously committed, remove from history with:
-# OS
 # Python
-# Render
-# Security - NEVER commit these
-# Test files
-# Testing
-# Virtual Environment
-# git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env' --prune-empty --tag-name-filter cat -- --all
-# Jolt Atlas
+__pycache__/
+*.py[cod]
 *$py.class
-*.cover
-*.db
+*.so
 *.egg
 *.egg-info/
+build/
+dist/
+sdist/
+wheels/
+develop-eggs/
+eggs/
+downloads/
+.eggs/
+.installed.cfg
+*.pyc
+
+# Virtual environments
+venv/
+.venv
+env/
+ENV/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+test_*.txt
+*.cover
+
+# Environment / secrets — NEVER commit
+.env
+.env.*
 *.env.backup
-*.env.production
-*.env.staging
-*.json
 *.key
-*.log
-*.p12
 *.pem
+*.p12
 *.pfx
-*.py[cod]
-*.so
-*.sqlite
-*.swo
-*.swp
 *_dsa
 *_ecdsa
 *_ed25519
 *_rsa
-*~
-.DS_Store
-.Python
-.coverage
-.eggs/
-.env
-.env.*.local
-.env.development
-.env.local
-.env.production
-.env.staging
-.idea/
-.installed.cfg
-.pytest_cache/
-.render-build-id
-.venv
-.vscode/
-ENV/
-Thumbs.db
-__pycache__/
-build/
 credentials.json
-data/
-develop-eggs/
-dist/
-downloads/
-eggs/
-env/
-htmlcov/
-lib/
-lib64/
-parts/
-private_key*
-render.yaml  # Contains secrets, use render.yaml.example instead
-sdist/
 secrets.json
-test_*.txt
-test_results.txt
-var/
-venv/
+private_key*
 wallet_key*
-wheels/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (runtime, regenerated)
+data/
+*.db
+*.sqlite
+*.log
+*.json
+
+# Jolt Atlas (binary artifacts)
 jolt-atlas/jolt_claims_prover
 jolt-prover/target/
 models/claim_classifier.onnx
+
+# AWS
 .bedrock_agentcore/
 .bedrock_agentcore.yaml
-*.pyc

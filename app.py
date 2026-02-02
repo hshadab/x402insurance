@@ -131,9 +131,9 @@ def create_app(env=None, dashboard_only=None):
         raise RuntimeError("BACKEND_WALLET_ADDRESS is required")
 
     # Initialize services
-    from proof_client import JoltProofClient
-    from blockchain import BlockchainClient
-    from database import DatabaseClient
+    from core.proof_client import JoltProofClient
+    from core.blockchain import BlockchainClient
+    from core.database import DatabaseClient
     from auth.payment_verifier import PaymentVerifier, FacilitatorPaymentVerifier
     from tasks.reserve_monitor import ReserveMonitor
 
