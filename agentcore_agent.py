@@ -6,7 +6,7 @@ Runs on AgentCore infrastructure at port 8080 with all capabilities:
 - Policy creation, claims processing, proof generation
 - Blockchain USDC refunds on Base Mainnet
 - x402 V2 payment verification via facilitator
-- Server-side fraud detection
+- Server-side failure verification
 
 Agent helpers (agent_purchase_policy, agent_submit_claim) are in agent_helpers.py.
 """

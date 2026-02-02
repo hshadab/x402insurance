@@ -16,7 +16,7 @@ This service fixes that. An agent buys an insurance policy before making an API 
 
 3. **If the API fails** — The agent sends `POST /claim` with the policy ID and the failed HTTP response (status code + body).
 
-4. **Server verifies the failure** — The server independently re-fetches the merchant URL to confirm the failure is real (fraud prevention). If the agent says the API returned 503 but the server sees 200, the claim is rejected.
+4. **Server verifies the failure** — The server independently re-fetches the merchant URL to confirm the API is actually down. If the agent reports 503 but the server sees 200, the claim is rejected.
 
 5. **Cryptographic proof generation** — A [Jolt Atlas](https://github.com/ICME-Lab/jolt-atlas) prover runs an ONNX neural network classifier over the HTTP response data and generates a zero-knowledge proof (SNARK) that the failure is genuine. This proof is publicly verifiable by anyone.
 
@@ -190,7 +190,7 @@ pytest tests/unit/ -v
 - Stuck policies auto-recover: if claim processing crashes, policies unlock after 10 minutes
 - All claim submissions require x402 payment authentication
 - Payments verified via the x402.org facilitator (signature, nonce, amount)
-- Server-side fraud detection: independently re-fetches merchant URLs
+- Server-side failure verification: independently re-fetches merchant URLs to confirm downtime
 - SSRF prevention on merchant URLs (blocks private IPs, loopback, internal hostnames)
 - Atomic database operations prevent double-claiming
 - No mock modes — real blockchain transactions and real SNARK proofs only

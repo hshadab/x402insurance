@@ -52,8 +52,8 @@ def test_1_buy_insurance():
         return None
 
 def test_2_submit_claim(policy_id):
-    """Test 2: Submit fraud claim with proof generation"""
-    print_section("TEST 2: Submit Fraud Claim (with Jolt Atlas Proof)")
+    """Test 2: Submit failure claim with proof generation"""
+    print_section("TEST 2: Submit Failure Claim (with Jolt Atlas Proof)")
 
     print("📤 Submitting claim for HTTP 503 error...")
     start = time.time()
@@ -122,7 +122,7 @@ def test_3_verify_proof(proof_data):
         data = response.json()
         print(f"✅ Proof verified successfully!")
         print(f"   Valid: {data['valid']}")
-        print(f"   Fraud Detected: {data['fraud_detected']}")
+        print(f"   Failure Detected: {data.get('failure_detected', data.get('fraud_detected'))}")
         print(f"   Payout Amount: ${data['payout_amount']}")
         return True
     else:
@@ -211,7 +211,7 @@ def run_e2e_test():
 
         print(f"\n💡 Key Insights:")
         print(f"   - Jolt Atlas proof generation is the bottleneck (~15-30s)")
-        print(f"   - This is acceptable for fraud claims (not time-critical)")
+        print(f"   - This is acceptable for failure claims (not time-critical)")
         print(f"   - Verification is instant (< 1s)")
         print(f"   - Agents get immediate confirmation, refund processes async")
 

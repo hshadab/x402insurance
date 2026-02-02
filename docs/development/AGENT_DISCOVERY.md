@@ -18,7 +18,7 @@ This document describes how autonomous agents can discover and interact with the
 - `/policies?wallet=0x...` - **Retrieve your policies by wallet address** (solves memory problem!)
 - `/claims/{claim_id}` - Check claim status
 - `/insure` - Purchase policy (x402 payment required)
-- `/claim` - File fraud claim (supports sync/async modes, idempotency)
+- `/claim` - File failure claim (supports sync/async modes, idempotency)
 - `/renew` - **Extend policy before expiration** (x402 payment required) (NEW!)
 
 ## Discovery Endpoints
@@ -126,7 +126,7 @@ GET /api/pricing
       "premium_paid": "$0.001",
       "api_call_cost": "$0.01",
       "coverage": "$0.01",
-      "net_cost_if_fraud": "$0.001 (just the premium)"
+      "net_cost_if_failure": "$0.001 (just the premium)"
     }
   }
 }

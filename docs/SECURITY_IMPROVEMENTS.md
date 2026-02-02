@@ -247,7 +247,7 @@ CHAIN_ID=84532
 
 **2026-01-31 (v2.3.0)**:
 - Updated to x402 V2 facilitator-based payment flow (`PAYMENT-SIGNATURE` header)
-- Server-side fraud detection via merchant URL re-fetch
+- Server-side failure verification via merchant URL re-fetch
 - Jolt Atlas 3-argument prover interface
 
 **2025-11-12**:

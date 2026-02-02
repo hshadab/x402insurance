@@ -237,7 +237,7 @@ def agent_card():
                 }
             },
             {
-                "id": "submit-claim", "name": "Submit Fraud Claim",
+                "id": "submit-claim", "name": "Submit Failure Claim",
                 "description": "Submit a claim when a merchant fails to deliver. Includes zkp proof generation and instant USDC refund.",
                 "endpoint": f"{base_url}/claim", "method": "POST", "x402Required": False,
                 "inputSchema": {

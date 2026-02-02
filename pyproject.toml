@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "x402-insurance"
 version = "1.0.0"
-description = "ZKP-verified insurance against x402 merchant fraud (Flask prototype)"
+description = "ZKP-verified insurance for x402 API call failures"
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 

@@ -321,7 +321,7 @@
             <div class="hiw-grid">
                 <div class="hiw-step"><span class="step-num">1</span><h4>Buy Coverage</h4><p>Agent sends POST /insure with x402 payment. Premium is 1% of coverage. Payment settled on-chain before policy is created. Reserve solvency verified.</p></div>
                 <div class="hiw-step"><span class="step-num">2</span><h4>API Fails</h4><p>Merchant returns HTTP 500+ or empty response. Agent captures full HTTP response as evidence.</p></div>
-                <div class="hiw-step"><span class="step-num">3</span><h4>Claim &amp; Prove</h4><p>POST /claim settles claim fee, triggers server re-fetch for fraud detection, then <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> generates a zkML proof over ONNX model inference.</p></div>
+                <div class="hiw-step"><span class="step-num">3</span><h4>Claim &amp; Prove</h4><p>POST /claim settles claim fee, triggers server re-fetch to confirm the failure, then <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> generates a zkML proof over ONNX model inference.</p></div>
                 <div class="hiw-step"><span class="step-num">4</span><h4>Verify &amp; Refund</h4><p>zkML proof verified and claim persisted. Then USDC refund sent on Base Mainnet. Crash-safe: claim record exists before refund. Proof auditable via POST /verify.</p></div>
             </div>
         </div>
@@ -401,7 +401,7 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/api/pricing
     <div style="margin:12px 0 6px;"><span class="section-title">Claims</span></div>
     <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/claim</span><span class="endpoint-desc">Submit claim</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body">
         <p style="color:var(--text2);margin-bottom:8px;">Claim for failed API call. Generates zkML proof, issues USDC refund.</p>
-        <div class="note-box"><strong>Fraud Detection:</strong> Server re-fetches merchant URL. Agent 5xx + server 200 = flagged.</div>
+        <div class="note-box"><strong>Failure Verification:</strong> Server re-fetches merchant URL to confirm the API is actually down. Agent reports 5xx but server sees 200 = claim rejected.</div>
         <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
         <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQ</span></td><td>Active policy ID</td></tr>
         <tr><td><span class="pn">http_response.status</span></td><td><span class="pt">int</span></td><td><span class="pr">REQ</span></td><td>HTTP status code</td></tr>

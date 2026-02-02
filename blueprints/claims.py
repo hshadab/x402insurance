@@ -70,7 +70,7 @@ def claim():
     except ValueError as e:
         return jsonify({"error": f"Invalid merchant_url: {e}"}), 400
 
-    # Server-side re-fetch for fraud detection
+    # Server-side re-fetch to confirm the failure
     server_verified = False
     server_http_status = None
     try:
@@ -83,7 +83,7 @@ def claim():
             return jsonify({
                 "error": "Server-side verification failed: merchant responded successfully "
                          "but agent reported failure",
-                "error_code": "fraud_suspected",
+                "error_code": "failure_not_confirmed",
                 "server_http_status": server_http_status,
                 "agent_http_status": http_status,
             }), 403
