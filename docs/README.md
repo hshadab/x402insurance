@@ -2,16 +2,14 @@
 
 ## Core Documentation
 
-- **[PRODUCTION_READY.md](PRODUCTION_READY.md)** - Current production status and verification
 - **[VERIFICATION_FLOW.md](VERIFICATION_FLOW.md)** - How proof verification works (off-chain before refund)
+- **[SECURITY_IMPROVEMENTS.md](SECURITY_IMPROVEMENTS.md)** - Security improvements
 
 ## Guides
 
 - **[DEPLOYMENT.md](guides/DEPLOYMENT.md)** - Deployment instructions
 - **[PRODUCTION_SETUP.md](guides/PRODUCTION_SETUP.md)** - Production configuration guide
 - **[WALLET_SETUP_GUIDE.md](guides/WALLET_SETUP_GUIDE.md)** - Setting up Base Mainnet wallet
-- **[DEPLOYMENT_CHECKLIST.md](guides/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
-- **[DEPLOYMENT_SUMMARY.md](guides/DEPLOYMENT_SUMMARY.md)** - Deployment summary
 
 ## Development
 
@@ -19,8 +17,6 @@
 - **[PAYMENT_IMPLEMENTATION_QUICKREF.md](development/PAYMENT_IMPLEMENTATION_QUICKREF.md)** - Payment implementation reference
 - **[AGENT_DISCOVERY.md](development/AGENT_DISCOVERY.md)** - Agent discovery mechanisms
 - **[AGENT_IMPROVEMENTS.md](development/AGENT_IMPROVEMENTS.md)** - Agent UX improvements
-- **[FUTURE_IMPROVEMENTS.md](development/FUTURE_IMPROVEMENTS.md)** - Roadmap and planned features
-- **[POSITIONING.md](development/POSITIONING.md)** - Product positioning strategy
 
 ## Archive
 
@@ -39,12 +35,10 @@ Historical documentation from previous releases:
 
 ### For Users
 - [Main README](../README.md) - Project overview and quick start
-- [Production Status](PRODUCTION_READY.md) - Current system status
 - [How Verification Works](VERIFICATION_FLOW.md) - Understanding the proof system
 
 ### For Developers
 - [Payment Architecture](development/PAYMENT_FLOW_ARCHITECTURE.md) - Technical architecture
-- [Future Improvements](development/FUTURE_IMPROVEMENTS.md) - Contributing ideas
 
 ### For Operators
 - [Deployment Guide](guides/DEPLOYMENT.md) - How to deploy

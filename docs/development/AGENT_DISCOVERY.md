@@ -572,7 +572,7 @@ async def check_health():
 #### 1. **429 Rate Limit Exceeded**
 ```python
 # Problem: Too many requests
-response = requests.post('/insure', ...)
+response = httpx.post('/insure', ...)
 # Response: 429 Too Many Requests
 # {
 #   "error": "Rate limit exceeded",
@@ -609,7 +609,7 @@ def call_with_backoff(func, max_retries=5):
 #### 2. **402 Payment Required**
 ```python
 # Problem: First request without payment
-response = requests.post('/insure', json=data)
+response = httpx.post('/insure', json=data)
 # Response: 402 Payment Required
 # {
 #   "x402Version": 1,
@@ -634,7 +634,7 @@ payment_header = sign_payment(
 )
 
 # Retry with payment header
-response = requests.post('/insure',
+response = httpx.post('/insure',
     headers={'X-Payment': payment_header, 'X-Payer': agent_wallet.address},
     json=data
 )
@@ -650,7 +650,7 @@ response = requests.post('/insure',
 policy_id = agent.memory.get('policy_id')  # Returns None after context reset!
 
 # ✅ GOOD: Query by wallet address
-policies_response = requests.get(f'/policies?wallet={agent.wallet.address}')
+policies_response = httpx.get(f'/policies?wallet={agent.wallet.address}')
 policies = policies_response.json()['active_policies']
 
 # Find policy for failed merchant
@@ -659,7 +659,7 @@ policy = next(p for p in policies if p['merchant_url'] == failed_merchant)
 policy_id = policy['policy_id']
 
 # Now file claim
-claim_response = requests.post('/claim', json={
+claim_response = httpx.post('/claim', json={
     'policy_id': policy_id,
     'http_response': {...}
 })
@@ -742,8 +742,8 @@ except httpx.TimeoutException:
 ```python
 # Problem: Network error during claim submission, agent retries
 # ❌ RISKY: Retry without idempotency key
-response1 = requests.post('/claim', json=claim_data)  # Network error
-response2 = requests.post('/claim', json=claim_data)  # Creates duplicate claim!
+response1 = httpx.post('/claim', json=claim_data)  # Network error
+response2 = httpx.post('/claim', json=claim_data)  # Creates duplicate claim!
 
 # ✅ SAFE: Use idempotency key
 import hashlib
@@ -753,7 +753,7 @@ claim_hash = hashlib.sha256(
     f"{policy_id}:{http_status}:{http_body_hash}".encode()
 ).hexdigest()
 
-response = requests.post('/claim',
+response = httpx.post('/claim',
     headers={'Idempotency-Key': claim_hash},
     json=claim_data
 )
@@ -766,7 +766,7 @@ response = requests.post('/claim',
 #### 6. **Policy Expired**
 ```python
 # Problem: Trying to file claim after 24-hour window
-response = requests.post('/claim', json={'policy_id': old_policy_id, ...})
+response = httpx.post('/claim', json={'policy_id': old_policy_id, ...})
 # Response: 400 Bad Request
 # {"error": "Policy expired"}
 
@@ -774,7 +774,7 @@ response = requests.post('/claim', json={'policy_id': old_policy_id, ...})
 from datetime import datetime, timedelta
 
 def monitor_policies(agent_wallet):
-    policies = requests.get(f'/policies?wallet={agent_wallet.address}').json()
+    policies = httpx.get(f'/policies?wallet={agent_wallet.address}').json()
 
     for policy in policies['active_policies']:
         expires_at = datetime.fromisoformat(policy['expires_at'].replace('Z', '+00:00'))
@@ -793,7 +793,7 @@ def monitor_policies(agent_wallet):
 **NEW: Policy Renewal Solution**
 ```python
 # Better solution: Renew policy before expiration!
-policies = requests.get(f'/policies?wallet={agent_wallet.address}').json()
+policies = httpx.get(f'/policies?wallet={agent_wallet.address}').json()
 
 for policy in policies['active_policies']:
     expires_at = datetime.fromisoformat(policy['expires_at'].replace('Z', '+00:00'))
@@ -837,7 +837,7 @@ response = x402.post('/renew', json={
 # Auto-renewal example
 def auto_renew_policies(agent_wallet):
     """Automatically renew policies before they expire"""
-    policies = requests.get(f'/policies?wallet={agent_wallet.address}').json()
+    policies = httpx.get(f'/policies?wallet={agent_wallet.address}').json()
 
     for policy in policies['active_policies']:
         expires_at = datetime.fromisoformat(policy['expires_at'].replace('Z', '+00:00'))
@@ -872,7 +872,7 @@ def auto_renew_policies(agent_wallet):
 ```python
 # Problem: Want to know if claim is being processed
 # After submitting claim:
-claim_response = requests.post('/claim', json=claim_data)
+claim_response = httpx.post('/claim', json=claim_data)
 claim_id = claim_response.json()['claim_id']
 
 # Poll for status (useful for async workflows)
@@ -881,7 +881,7 @@ import time
 def wait_for_claim(claim_id, timeout=60):
     start_time = time.time()
     while time.time() - start_time < timeout:
-        status = requests.get(f'/claims/{claim_id}').json()
+        status = httpx.get(f'/claims/{claim_id}').json()
 
         if status['status'] == 'paid':
             print(f"✅ Claim paid! TX: {status['refund_tx_hash']}")

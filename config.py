@@ -93,12 +93,6 @@ class Config:
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     HUEY_IMMEDIATE = os.getenv("HUEY_IMMEDIATE", "false").lower() in ["1", "true", "yes"]
 
-    # AgentCore service URL (used by dashboard to link/display)
-    AGENTCORE_SERVICE_URL = os.getenv(
-        "AGENTCORE_SERVICE_URL",
-        "https://4axkjkepdx.us-east-1.awsapprunner.com"
-    )
-
 
 
 class DevelopmentConfig(Config):

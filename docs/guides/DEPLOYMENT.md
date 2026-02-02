@@ -4,8 +4,10 @@
 
 x402 Insurance uses a two-tier deployment:
 
-1. **AWS Bedrock AgentCore** (primary) — runs the full insurance service on port 8080
-2. **AWS App Runner** (dashboard) — serves a read-only monitoring dashboard on port 8000 via ECR
+1. **AWS Bedrock AgentCore** (primary) — full insurance service on port 8080 (blockchain, proofs, payments, claims)
+2. **AWS App Runner** (dashboard) — read-only public dashboard on port 8000 via `Dockerfile.dashboard`
+
+**Dashboard URL:** https://4axkjkepdx.us-east-1.awsapprunner.com
 
 ## AWS Deployment (Recommended)
 
@@ -32,40 +34,21 @@ The Docker image (`Dockerfile`) includes:
 - Dory SRS file
 - All Python dependencies
 
-### App Runner — Dashboard
 
-Deploy using `Dockerfile.dashboard` for a lightweight read-only dashboard. The dashboard image is pushed to ECR and App Runner pulls from there.
+### App Runner — Public Dashboard
 
-**ECR repository:** `851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard`
+Deploy `Dockerfile.dashboard` for the public read-only dashboard. No wallet keys or blockchain deps needed.
 
 ```bash
-# Build the dashboard image
 docker build -f Dockerfile.dashboard -t x402-dashboard .
 
-# Push to ECR
 aws ecr get-login-password --region us-east-1 | \
   docker login --username AWS --password-stdin 851725214068.dkr.ecr.us-east-1.amazonaws.com
 docker tag x402-dashboard 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
 docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
-
-# Trigger App Runner redeployment
-aws apprunner start-deployment \
-  --service-arn arn:aws:apprunner:us-east-1:851725214068:service/x402insurance/a54c141ba18a4b59b2adfb21bff52730 \
-  --region us-east-1
 ```
 
-**App Runner service:** `x402insurance` (service ID: `a54c141ba18a4b59b2adfb21bff52730`)
-**ECR access role:** `AppRunnerECRAccessRole`
-**Health check path:** `/ping`
-**Port:** 8000
-
-The dashboard uses a lightweight health blueprint (`dashboard_health_bp`) that returns `{"status": "healthy", "mode": "dashboard-readonly"}` without checking blockchain, database, or prover subsystems.
-
-**Optional environment variables:**
-- `AGENTCORE_SERVICE_URL` — URL of the AgentCore service
-- `ENV=production`
-
-No wallet keys, blockchain deps, or Jolt binary needed.
+The dashboard runs with `DASHBOARD_ONLY=true`, which skips all blockchain/prover initialization and only registers discovery + health blueprints.
 
 ## Docker Compose (Local Development)
 
@@ -79,7 +62,7 @@ docker-compose -f docker-compose.dev.yml up
 
 Services:
 - `app` — Full insurance service on port 8080
-- `dashboard` — Read-only dashboard on port 8000
+- `dashboard` — Read-only public dashboard on port 8000
 - `worker` — Huey background worker
 - `postgres` — PostgreSQL database
 - `redis` — Rate limiting and task queue

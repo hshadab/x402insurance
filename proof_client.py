@@ -218,8 +218,8 @@ class JoltProofClient:
     # Payout cap check (called by verify endpoint)
     def check_payout_cap(self, public_inputs: List[int]) -> bool:
         """Check that payout does not exceed max coverage."""
-        import extensions as ext
-        max_coverage = ext.MAX_COVERAGE if ext.MAX_COVERAGE is not None else 0.1
+        from flask import current_app
+        max_coverage = current_app.config.get("MAX_COVERAGE_USDC", 0.1)
         max_payout = int(max_coverage * 1_000_000)
         payout_amount = public_inputs[3] if len(public_inputs) > 3 else 0
         if payout_amount > max_payout:

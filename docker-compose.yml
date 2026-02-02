@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Full insurance service (AgentCore primary)
   app:
@@ -10,6 +8,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file: .env
     environment:
       # App Configuration
       - ENV=production
@@ -18,40 +17,11 @@ services:
       - HOST=0.0.0.0
 
       # Database (use PostgreSQL in Docker)
-      - DATABASE_URL=postgresql://x402user:x402pass@postgres:5432/x402insurance
-
-      # Blockchain (set via .env file or environment variables)
-      - BASE_RPC_URL=${BASE_RPC_URL}
-      - USDC_CONTRACT_ADDRESS=${USDC_CONTRACT_ADDRESS:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
-      - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
-      - BACKEND_WALLET_ADDRESS=${BACKEND_WALLET_ADDRESS}
-
-      # Jolt Atlas
-      - JOLT_BINARY_PATH=${JOLT_BINARY_PATH:-./jolt-atlas/jolt_claims_prover}
-
-      # Insurance parameters
-      - PREMIUM_PERCENTAGE=${PREMIUM_PERCENTAGE:-0.01}
-      - MAX_COVERAGE_USDC=${MAX_COVERAGE_USDC:-0.1}
-      - POLICY_DURATION_HOURS=${POLICY_DURATION_HOURS:-24}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-x402user}:${POSTGRES_PASSWORD:-x402pass}@postgres:5432/x402insurance
 
       # Rate limiting (use Redis)
       - RATE_LIMIT_ENABLED=true
       - RATE_LIMIT_STORAGE_URL=redis://redis:6379/0
-
-      # Payment verification
-      - PAYMENT_VERIFICATION_MODE=${PAYMENT_VERIFICATION_MODE:-full}
-      - PAYMENT_MAX_AGE_SECONDS=300
-      - FACILITATOR_URL=${FACILITATOR_URL:-https://x402.org/facilitator}
-
-      # Security
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
-      - REQUIRE_CLAIM_AUTHENTICATION=${REQUIRE_CLAIM_AUTHENTICATION:-true}
-
-      # Chain configuration
-      - CHAIN_ID=${CHAIN_ID:-8453}
-
-      # Monitoring (optional)
-      - SENTRY_DSN=${SENTRY_DSN:-}
 
     volumes:
       # Mount data directory for persistence
@@ -74,29 +44,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # Read-only dashboard (App Runner equivalent)
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.dashboard
-    container_name: x402-insurance-dashboard
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - ENV=production
-      - PORT=8000
-      - AGENTCORE_SERVICE_URL=http://app:8080
-      - CORS_ORIGINS=*
-    networks:
-      - x402-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
   # Huey background worker
   worker:
     build:
@@ -105,20 +52,12 @@ services:
     container_name: x402-insurance-worker
     restart: unless-stopped
     command: huey_consumer tasks.huey_config.huey -w 2 -k thread
+    env_file: .env
     environment:
       - ENV=production
       - DEBUG=false
-      - DATABASE_URL=postgresql://x402user:x402pass@postgres:5432/x402insurance
-      - BASE_RPC_URL=${BASE_RPC_URL}
-      - USDC_CONTRACT_ADDRESS=${USDC_CONTRACT_ADDRESS:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
-      - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
-      - BACKEND_WALLET_ADDRESS=${BACKEND_WALLET_ADDRESS}
-      - JOLT_BINARY_PATH=${JOLT_BINARY_PATH:-./jolt-atlas/jolt_claims_prover}
-      - PREMIUM_PERCENTAGE=${PREMIUM_PERCENTAGE:-0.01}
-      - MAX_COVERAGE_USDC=${MAX_COVERAGE_USDC:-0.1}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-x402user}:${POSTGRES_PASSWORD:-x402pass}@postgres:5432/x402insurance
       - REDIS_URL=redis://redis:6379/0
-      - CHAIN_ID=${CHAIN_ID:-8453}
-      - FACILITATOR_URL=${FACILITATOR_URL:-https://x402.org/facilitator}
     volumes:
       - ./data:/app/data
       - ./jolt-atlas:/app/jolt-atlas
@@ -131,6 +70,28 @@ services:
     networks:
       - x402-network
 
+  # Read-only public dashboard (lightweight, no blockchain deps)
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: x402-dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=production
+      - DASHBOARD_ONLY=true
+      - PORT=8000
+      - CORS_ORIGINS=*
+    networks:
+      - x402-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
@@ -138,8 +99,8 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_DB=x402insurance
-      - POSTGRES_USER=x402user
-      - POSTGRES_PASSWORD=x402pass
+      - POSTGRES_USER=${POSTGRES_USER:-x402user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-x402pass}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
@@ -147,7 +108,7 @@ services:
     networks:
       - x402-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U x402user -d x402insurance"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-x402user} -d x402insurance"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Development docker-compose configuration
 # Usage: docker-compose -f docker-compose.dev.yml up
 
@@ -13,6 +11,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file: .env
     environment:
       # App Configuration (Development mode)
       - ENV=development
@@ -22,13 +21,11 @@ services:
       - LOG_LEVEL=DEBUG
 
       # Database (PostgreSQL for development)
-      - DATABASE_URL=postgresql://x402user:x402pass@postgres:5432/x402insurance_dev
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-x402user}:${POSTGRES_PASSWORD:-x402pass}@postgres:5432/x402insurance_dev
 
       # Blockchain (Base Sepolia testnet)
       - BASE_RPC_URL=${BASE_RPC_URL:-https://sepolia.base.org}
       - USDC_CONTRACT_ADDRESS=${USDC_CONTRACT_ADDRESS:-0x036CbD53842c5426634e7929541eC2318f3dCF7e}
-      - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
-      - BACKEND_WALLET_ADDRESS=${BACKEND_WALLET_ADDRESS}
 
       # Jolt Atlas
       - JOLT_BINARY_PATH=./jolt-atlas/jolt_claims_prover
@@ -62,26 +59,6 @@ services:
       - x402-dev-network
     command: python -u agentcore_agent.py
 
-  # Read-only dashboard
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.dashboard
-    container_name: x402-dashboard-dev
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - ENV=development
-      - DEBUG=true
-      - PORT=8000
-      - AGENTCORE_SERVICE_URL=http://app:8080
-      - CORS_ORIGINS=*
-    volumes:
-      - .:/app
-    networks:
-      - x402-dev-network
-
   # Huey background worker
   huey-worker:
     build:
@@ -89,14 +66,13 @@ services:
       dockerfile: Dockerfile
     container_name: x402-huey-worker
     restart: unless-stopped
+    env_file: .env
     environment:
       - ENV=development
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://x402user:x402pass@postgres:5432/x402insurance_dev
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-x402user}:${POSTGRES_PASSWORD:-x402pass}@postgres:5432/x402insurance_dev
       - BASE_RPC_URL=${BASE_RPC_URL:-https://sepolia.base.org}
       - USDC_CONTRACT_ADDRESS=${USDC_CONTRACT_ADDRESS:-0x036CbD53842c5426634e7929541eC2318f3dCF7e}
-      - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
-      - BACKEND_WALLET_ADDRESS=${BACKEND_WALLET_ADDRESS}
     volumes:
       - .:/app
       - ./data:/app/data
@@ -114,8 +90,8 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_DB=x402insurance_dev
-      - POSTGRES_USER=x402user
-      - POSTGRES_PASSWORD=x402pass
+      - POSTGRES_USER=${POSTGRES_USER:-x402user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-x402pass}
     volumes:
       - postgres-dev-data:/var/lib/postgresql/data
     ports:

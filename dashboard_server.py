@@ -1,14 +1,25 @@
 """
-x402 Insurance Dashboard — Lightweight Entry Point for App Runner.
+Dashboard-only entry point for App Runner.
 
-Serves the read-only informational dashboard and health/discovery
-endpoints only.  No blockchain, wallet, prover, or payment deps.
+Runs the Flask app in read-only dashboard mode (DASHBOARD_ONLY=true).
+No blockchain, wallet, prover, or payment verification dependencies needed.
+Serves the dashboard UI, agent discovery card, health checks, and pricing info.
+
+Public URL: https://4axkjkepdx.us-east-1.awsapprunner.com
 """
-from app import create_dashboard_app
-from config import get_config
+import os
+import logging
 
-app = create_dashboard_app()
+os.environ.setdefault("DASHBOARD_ONLY", "true")
+os.environ.setdefault("PORT", "8000")
 
-if __name__ == '__main__':
-    config = get_config()
-    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
+from app import create_app
+
+app = create_app(dashboard_only=True)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    logging.getLogger("x402insurance").info(
+        "Starting x402 Insurance Dashboard on port %d (read-only)", port
+    )
+    app.run(host="0.0.0.0", port=port)

@@ -2,8 +2,8 @@
 
 ## Architecture
 
-- **Primary service**: AWS Bedrock AgentCore (`agentcore_agent.py`, port 8080)
-- **Dashboard**: AWS App Runner via ECR (`dashboard_server.py`, port 8000, read-only)
+- **Primary service**: AWS Bedrock AgentCore (`agentcore_agent.py`, port 8080) — full insurance API
+- **Dashboard**: AWS App Runner via ECR (`dashboard_server.py`, port 8000, read-only) — https://4axkjkepdx.us-east-1.awsapprunner.com
 
 ## Prerequisites
 
@@ -66,31 +66,7 @@ docker build -t x402insurance .
 docker run -p 8080:8080 --env-file .env.production x402insurance
 ```
 
-## Step 3: Deploy Dashboard (App Runner via ECR)
-
-```bash
-# Build
-docker build -f Dockerfile.dashboard -t x402-dashboard .
-
-# Test locally
-docker run --rm -p 8001:8000 x402-dashboard
-curl http://localhost:8001/health  # {"status":"healthy","mode":"dashboard-readonly",...}
-
-# Push to ECR
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin 851725214068.dkr.ecr.us-east-1.amazonaws.com
-docker tag x402-dashboard 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
-docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
-
-# Trigger App Runner redeployment
-aws apprunner start-deployment \
-  --service-arn arn:aws:apprunner:us-east-1:851725214068:service/x402insurance/a54c141ba18a4b59b2adfb21bff52730 \
-  --region us-east-1
-```
-
-The dashboard uses `dashboard_health_bp` (a lightweight health blueprint) instead of the full `health_bp`, so `/health` returns a simple healthy status without checking blockchain, database, or prover subsystems.
-
-## Step 4: Fund Wallet
+## Step 3: Fund Wallet
 
 Minimum balances:
 - **ETH**: 0.01 ETH for gas (~50-100 transactions)

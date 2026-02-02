@@ -3,572 +3,452 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>NovNet x402 Insurance — AgentCore Service Dashboard</title>
+    <title>x402 Insurance — Dashboard</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e1;</text></svg>"/>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         :root{
-            --bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;
-            --card:rgba(255,255,255,0.04);--card-border:rgba(255,255,255,0.08);--card-hover:rgba(255,255,255,0.07);
-            --aws-navy:#232f3e;--aws-navy-light:#2a3749;
-            --blue:#539fe5;--blue-dim:rgba(83,159,229,0.15);
-            --green:#2ea043;--green-dim:rgba(46,160,67,0.15);
-            --red:#f85149;--red-dim:rgba(248,81,73,0.15);
-            --yellow:#d29922;--yellow-dim:rgba(210,153,34,0.15);
-            --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.15);
-            --orange:#ec7211;--orange-dim:rgba(236,114,17,0.12);
-            --text:#d1d5db;--text2:#8b949e;--text3:#6e7681;
-            --font:'Amazon Ember',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-            --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+            --bg:#f0f2f8;--bg2:#e8ebf2;
+            --card:#fff;--card-border:#d0d5e0;
+            --nav-bg:#1c2233;
+            --accent:#2563eb;--accent-dim:rgba(37,99,235,0.07);
+            --green:#16a34a;--green-dim:rgba(22,163,74,0.07);
+            --red:#dc2626;--red-dim:rgba(220,38,38,0.07);
+            --yellow:#ca8a04;--yellow-dim:rgba(202,138,4,0.07);
+            --purple:#7c3aed;--purple-dim:rgba(124,58,237,0.07);
+            --orange:#ea580c;
+            --text:#1e293b;--text2:#475569;--text3:#94a3b8;
+            --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+            --mono:ui-monospace,'SFMono-Regular','SF Mono',Menlo,Consolas,monospace;
         }
-        body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;}
+        body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5;font-size:13px;}
 
         /* NAV */
-        .nav{position:sticky;top:0;z-index:100;background:var(--aws-navy);border-bottom:1px solid rgba(255,255,255,0.1);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;}
-        .nav-left{display:flex;align-items:center;gap:28px;}
-        .nav-logo{font-size:17px;font-weight:700;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px;}
-        .nav-logo .logo-novnet{color:var(--orange);font-weight:800;}
-        .nav-logo svg{width:26px;height:26px;}
-        .nav-tabs{display:flex;gap:2px;}
-        .nav-tab{color:rgba(255,255,255,0.7);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;transition:all .2s;cursor:pointer;border:none;background:none;}
-        .nav-tab:hover{color:#fff;background:rgba(255,255,255,0.1);}
-        .nav-tab.active{color:#fff;background:var(--orange);}
-        .nav-right{display:flex;align-items:center;gap:10px;}
-        .status-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);}
-        .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
-        .status-dot.error{background:var(--red);box-shadow:0 0 8px var(--red);}
-        .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;background:rgba(255,255,255,0.08);color:var(--text2);border:1px solid var(--card-border);}
-        .badge-blue{background:var(--orange-dim);color:var(--orange);border-color:rgba(236,114,17,0.3);}
+        .nav{position:sticky;top:0;z-index:100;background:var(--nav-bg);padding:0 16px;height:40px;display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+        .nav-left{display:flex;align-items:center;gap:20px;}
+        .nav-logo{font-size:13px;font-weight:600;color:#fff;text-decoration:none;letter-spacing:-0.3px;}
+        .nav-tabs{display:flex;gap:1px;}
+        .nav-tab{color:rgba(255,255,255,0.6);text-decoration:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:none;transition:all .15s;}
+        .nav-tab:hover{color:#fff;background:rgba(255,255,255,0.08);}
+        .nav-tab.active{color:#fff;background:rgba(255,255,255,0.15);}
+        .nav-right{display:flex;align-items:center;gap:8px;}
+        .status-indicator{display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);}
+        .status-dot{width:6px;height:6px;border-radius:50%;background:#3fb950;}
+        .status-dot.error{background:var(--red);}
+        .badge{font-size:10px;padding:2px 7px;border-radius:3px;font-weight:500;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);}
 
         /* LAYOUT */
-        .container{max-width:1280px;margin:0 auto;padding:24px;}
+        .container{max-width:1200px;margin:0 auto;padding:12px 16px;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
 
+        /* PAGE HEADER */
+        .page-header{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;padding:4px 0;}
+        .page-header h1{font-size:16px;font-weight:600;color:var(--text);}
+        .page-header p{font-size:11px;color:var(--text3);}
+        .page-header a{color:var(--accent);text-decoration:none;}
+        .page-header a:hover{text-decoration:underline;}
+
         /* CARDS */
-        .glass{background:var(--bg2);border:1px solid var(--card-border);border-radius:8px;transition:border-color .2s;}
-        .glass:hover{border-color:rgba(255,255,255,0.12);}
-        .section-title{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-        .section-title .icon{font-size:20px;}
+        .card{background:var(--card);border:1px solid var(--card-border);border-radius:6px;box-shadow:0 1px 2px rgba(30,41,59,0.04);}
+        .card-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--card-border);font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;}
+        .card-body{padding:10px 12px;}
+        .section-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;}
 
-        /* HERO */
-        .hero{text-align:center;padding:40px 20px 16px;}
-        .hero h1{font-size:28px;font-weight:800;color:#fff;margin-bottom:10px;}
-        .hero h1 span{color:var(--orange);}
-        .hero p{color:var(--text2);font-size:14px;max-width:700px;margin:0 auto;line-height:1.7;}
-        .hero a{color:var(--orange);text-decoration:none;font-weight:500;}
-        .hero a:hover{text-decoration:underline;}
-
-        /* AWS INFO STRIP */
-        .aws-info{margin:20px 0 24px;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;font-size:12px;overflow:hidden;}
-        .aws-info .ai-cell{padding:16px 20px;border-right:1px solid var(--card-border);}
-        .aws-info .ai-cell:last-child{border-right:none;}
-        .aws-info .ai-label{display:block;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;margin-bottom:6px;}
-        .aws-info .ai-val{display:block;font-family:var(--mono);color:var(--text);word-break:break-all;font-size:12px;line-height:1.4;}
-        .aws-info .ai-val a{color:var(--orange);text-decoration:none;}
-        .aws-info .ai-val a:hover{text-decoration:underline;}
-        .refresh-note{text-align:center;font-size:11px;color:var(--text3);margin-bottom:16px;}
+        /* INFO BAR */
+        .info-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:10px;font-size:11px;}
+        .info-bar .ib-cell{padding:8px 12px;border-right:1px solid var(--card-border);}
+        .info-bar .ib-cell:last-child{border-right:none;}
+        .info-bar .ib-label{color:var(--text3);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px;}
+        .info-bar .ib-val{font-family:var(--mono);color:var(--text2);font-size:11px;word-break:break-all;line-height:1.3;}
 
         /* METRICS */
-        .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
-        .metric-card{padding:24px;text-align:center;}
-        .metric-label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
-        .metric-value{font-size:32px;font-weight:800;color:#fff;}
+        .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;}
+        .metric{padding:12px;text-align:center;}
+        .metric-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+        .metric-value{font-size:22px;font-weight:700;color:var(--text);line-height:1.2;}
         .metric-value.green{color:var(--green);}
-        .metric-value.blue{color:var(--blue);}
+        .metric-value.blue{color:var(--accent);}
         .metric-value.yellow{color:var(--yellow);}
-        .metric-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+        .metric-sub{font-size:10px;color:var(--text3);margin-top:2px;}
+
+        /* STATUS LINE */
+        .status-line{font-size:10px;color:var(--text3);margin-bottom:10px;text-align:right;}
 
         /* HEALTH */
-        .health-panel{padding:24px;margin-bottom:24px;}
-        .health-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-        .health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
-        .health-item{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#ffffff06;border-radius:10px;font-size:13px;}
-        .health-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-        .health-item .dot.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
-        .health-item .dot.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow);}
-        .health-item .dot.fail{background:var(--red);box-shadow:0 0 6px var(--red);}
-
-        /* HOW IT WORKS */
-        .how-it-works{padding:24px;margin-bottom:24px;}
-        .hiw-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:12px;}
-        .hiw-step{position:relative;padding:20px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--card-border);}
-        .hiw-step .step-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--orange-dim);color:var(--orange);font-weight:700;font-size:13px;margin-bottom:10px;}
-        .hiw-step h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px;}
-        .hiw-step p{font-size:12px;color:var(--text2);line-height:1.6;}
-        .hiw-step a{color:var(--orange);text-decoration:none;font-size:12px;}
-        .hiw-step a:hover{text-decoration:underline;}
-
-        /* CURL EXAMPLES */
-        .curl-panel{padding:24px;margin-bottom:24px;}
-        .curl-panel pre{background:#0a0a0f;border:1px solid var(--card-border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;overflow-x:auto;color:var(--text2);}
-        .curl-panel .comment{color:var(--text3);}
-        .curl-panel .url{color:var(--green);}
+        .health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;}
+        .health-item{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#f5f7fc;border:1px solid #e4e8f0;border-radius:4px;font-size:12px;}
+        .health-item .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+        .health-item .dot.ok{background:var(--green);}
+        .health-item .dot.warn{background:#bf8700;}
+        .health-item .dot.fail{background:var(--red);}
 
         /* TABLES */
-        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
-        .table-panel{padding:24px;overflow:hidden;}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
         .table-wrap{overflow-x:auto;}
-        table{width:100%;border-collapse:collapse;font-size:13px;}
-        th{text-align:left;padding:10px 12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:11px;border-bottom:1px solid var(--card-border);}
-        td{padding:10px 12px;border-bottom:1px solid #ffffff08;color:var(--text2);}
-        tr:hover td{background:#ffffff05;}
-        .tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th{text-align:left;padding:6px 8px;color:var(--text3);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--card-border);background:var(--bg);}
+        td{padding:6px 8px;border-bottom:1px solid #e8ebf2;color:var(--text2);}
+        tr:hover td{background:#f5f7fc;}
+        .tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;}
         .tag-active{background:var(--green-dim);color:var(--green);}
         .tag-expired,.tag-denied,.tag-rejected{background:var(--red-dim);color:var(--red);}
         .tag-pending,.tag-processing{background:var(--yellow-dim);color:var(--yellow);}
         .tag-approved,.tag-paid{background:var(--green-dim);color:var(--green);}
-        .tag-verified{background:var(--blue-dim);color:var(--blue);}
-        .mono{font-family:var(--mono);font-size:12px;}
-        .truncate{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;}
-        .empty-msg{text-align:center;color:var(--text3);padding:24px 12px;font-size:13px;}
+        .tag-verified{background:var(--accent-dim);color:var(--accent);}
+        .mono{font-family:var(--mono);font-size:11px;}
+        .truncate{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;}
+        .empty-msg{text-align:center;color:var(--text3);padding:16px 8px;font-size:12px;}
 
         /* BLOCKCHAIN */
-        .chain-panel{padding:24px;margin-bottom:24px;}
-        .chain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
-        .chain-item{padding:14px;background:#ffffff06;border-radius:10px;}
-        .chain-item .label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-        .chain-item .val{font-family:var(--mono);font-size:13px;color:var(--text);word-break:break-all;}
+        .chain-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+        .chain-item{padding:8px 12px;border-right:1px solid var(--card-border);}
+        .chain-item:last-child{border-right:none;}
+        .chain-item .label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px;}
+        .chain-item .val{font-family:var(--mono);font-size:11px;color:var(--text2);word-break:break-all;}
 
         /* RESERVE GAUGE */
-        .reserve-panel{padding:24px;margin-bottom:24px;}
-        .gauge-wrap{display:flex;align-items:center;gap:24px;}
-        .gauge{width:120px;height:120px;position:relative;}
+        .reserve-panel{margin-bottom:10px;}
+        .gauge-wrap{display:flex;align-items:center;gap:16px;padding:4px 0;}
+        .gauge{width:80px;height:80px;position:relative;}
         .gauge svg{transform:rotate(-90deg);}
-        .gauge-bg{fill:none;stroke:#ffffff10;stroke-width:10;}
-        .gauge-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .6s ease,stroke .3s;}
+        .gauge-bg{fill:none;stroke:#e8eaed;stroke-width:8;}
+        .gauge-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease,stroke .3s;}
         .gauge-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
-        .gauge-text .ratio{font-size:24px;font-weight:800;color:#fff;}
-        .gauge-text .unit{font-size:11px;color:var(--text3);}
+        .gauge-text .ratio{font-size:16px;font-weight:700;color:var(--text);}
+        .gauge-text .unit{font-size:9px;color:var(--text3);}
         .reserve-details{flex:1;}
-        .reserve-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff08;font-size:13px;}
+        .reserve-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f0f1f3;font-size:12px;}
         .reserve-row:last-child{border:none;}
         .reserve-row .rlabel{color:var(--text3);}
-        .reserve-row .rval{font-family:var(--mono);color:var(--text);}
+        .reserve-row .rval{font-family:var(--mono);color:var(--text2);font-size:11px;}
 
-        /* CLAIM LOOKUP */
-        .lookup-panel{padding:24px;margin-bottom:24px;}
-        .lookup-row{display:flex;gap:12px;align-items:center;}
-        .lookup-row input{flex:1;background:#ffffff08;border:1px solid var(--card-border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
-        .lookup-row input:focus{border-color:var(--blue);}
-        .btn{padding:10px 20px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
-        .btn:hover{background:#d4650f;transform:translateY(-1px);}
-        .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
-        .btn-sm{padding:6px 14px;font-size:12px;border-radius:8px;}
-        .btn-refresh{background:#ffffff10;color:var(--text2);border:1px solid var(--card-border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;}
-        .btn-refresh:hover{background:#ffffff18;color:#fff;}
-        .lookup-result{margin-top:14px;display:none;}
+        /* COLLAPSIBLE SECTIONS */
+        .collapse-toggle{cursor:pointer;user-select:none;}
+        .collapse-toggle .chevron{display:inline-block;transition:transform .15s;font-size:10px;color:var(--text3);margin-left:4px;}
+        .collapse-toggle.open .chevron{transform:rotate(90deg);}
+
+        /* HOW IT WORKS - compact */
+        .hiw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+        .hiw-step{padding:8px 10px;}
+        .hiw-step .step-num{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-weight:700;font-size:10px;text-align:center;line-height:18px;margin-right:4px;}
+        .hiw-step h4{font-size:12px;font-weight:600;color:var(--text);display:inline;}
+        .hiw-step p{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;}
+        .hiw-step a{color:var(--accent);text-decoration:none;font-size:11px;}
+
+        /* LOOKUP */
+        .lookup-row{display:flex;gap:8px;align-items:center;}
+        .lookup-row input{flex:1;background:var(--bg);border:1px solid var(--card-border);border-radius:4px;padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;}
+        .lookup-row input:focus{border-color:var(--accent);}
+        .btn{padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;}
+        .btn:hover{background:#005fc5;}
+        .btn:disabled{opacity:.4;cursor:not-allowed;}
+        .btn-sm{padding:4px 10px;font-size:11px;}
+        .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--card-border);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;}
+        .btn-ghost:hover{background:var(--bg);color:var(--text);}
+        .lookup-result{margin-top:8px;display:none;}
         .lookup-result.visible{display:block;}
-        .lookup-result pre{background:#ffffff06;border:1px solid var(--card-border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:12px;overflow-x:auto;color:var(--text2);white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;}
+        .lookup-result pre,.try-result pre{background:#1a1f29;border-radius:4px;padding:10px;font-family:var(--mono);font-size:11px;overflow-x:auto;color:#a8b1c0;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;}
 
-        /* API DOCS TAB */
-        .endpoint-card{background:var(--bg2);border:1px solid var(--card-border);border-radius:8px;margin-bottom:12px;overflow:hidden;}
-        .endpoint-header{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;user-select:none;transition:background .15s;}
-        .endpoint-header:hover{background:#ffffff08;}
-        .endpoint-method{font-size:11px;font-weight:700;font-family:var(--mono);padding:3px 8px;border-radius:4px;min-width:40px;text-align:center;}
+        /* CURL */
+        .curl-block{background:#1a1f29;border-radius:4px;padding:10px;font-family:var(--mono);font-size:11px;line-height:1.6;overflow-x:auto;color:#a8b1c0;}
+        .curl-block .comment{color:#6e7681;}
+        .curl-block .url{color:#3fb950;}
+
+        /* API DOCS */
+        .endpoint-card{background:var(--card);border:1px solid var(--card-border);border-radius:4px;margin-bottom:6px;overflow:hidden;}
+        .endpoint-header{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;user-select:none;font-size:12px;}
+        .endpoint-header:hover{background:#f8f9fb;}
+        .endpoint-method{font-size:10px;font-weight:700;font-family:var(--mono);padding:2px 6px;border-radius:3px;}
         .method-get{background:var(--green-dim);color:var(--green);}
-        .method-post{background:var(--blue-dim);color:var(--blue);}
-        .endpoint-path{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--orange);}
-        .endpoint-desc{font-size:13px;color:var(--text3);margin-left:auto;}
-        .endpoint-badges{display:flex;gap:6px;margin-left:12px;}
-        .endpoint-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;}
+        .method-post{background:var(--accent-dim);color:var(--accent);}
+        .endpoint-path{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);}
+        .endpoint-desc{font-size:11px;color:var(--text3);margin-left:auto;}
+        .endpoint-badges{display:flex;gap:4px;margin-left:8px;}
+        .endpoint-badge{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;}
         .badge-payment{background:var(--yellow-dim);color:var(--yellow);}
         .badge-public{background:var(--green-dim);color:var(--green);}
         .badge-rate{background:var(--purple-dim);color:var(--purple);}
-        .chevron{margin-left:8px;color:var(--text3);transition:transform .2s;font-size:16px;}
-        .endpoint-card.open .chevron{transform:rotate(90deg);}
-        .endpoint-body{padding:20px;display:none;border-top:1px solid var(--card-border);}
+        .ep-chevron{margin-left:4px;color:var(--text3);transition:transform .15s;font-size:12px;}
+        .endpoint-card.open .ep-chevron{transform:rotate(90deg);}
+        .endpoint-body{padding:12px;display:none;border-top:1px solid var(--card-border);font-size:12px;}
         .endpoint-card.open .endpoint-body{display:block;}
-        .param-table{width:100%;border-collapse:collapse;margin:8px 0;}
-        .param-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:6px 10px;border-bottom:1px solid var(--card-border);}
-        .param-table td{padding:6px 10px;font-size:13px;border-bottom:1px solid #ffffff08;vertical-align:top;}
-        .pn{font-family:var(--mono);color:var(--blue);font-weight:600;font-size:12px;}
-        .pt{font-family:var(--mono);color:var(--text3);font-size:11px;}
-        .pr{color:var(--red);font-size:10px;font-weight:700;}
-        .po{color:var(--text3);font-size:10px;font-weight:600;}
-        .sub-heading{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 6px;}
-        .sub-heading:first-child{margin-top:0;}
-        pre.code-block{background:#0a0a0f;border:1px solid var(--card-border);border-radius:8px;padding:14px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--text2);margin:6px 0;}
-        .note-box{background:var(--yellow-dim);border:1px solid #f59e0b40;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--yellow);margin:10px 0;}
-        .try-it{margin-top:12px;}
-        .try-result{margin-top:10px;display:none;}
+        .param-table{width:100%;border-collapse:collapse;margin:6px 0;}
+        .param-table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--text3);padding:4px 8px;border-bottom:1px solid var(--card-border);}
+        .param-table td{padding:4px 8px;font-size:12px;border-bottom:1px solid #f0f1f3;vertical-align:top;}
+        .pn{font-family:var(--mono);color:var(--accent);font-weight:600;font-size:11px;}
+        .pt{font-family:var(--mono);color:var(--text3);font-size:10px;}
+        .pr{color:var(--red);font-size:9px;font-weight:700;}
+        .po{color:var(--text3);font-size:9px;font-weight:600;}
+        .sub-heading{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin:10px 0 4px;}
+        pre.code-block{background:#1a1f29;border-radius:4px;padding:10px;font-family:var(--mono);font-size:11px;line-height:1.5;color:#a8b1c0;margin:4px 0;overflow-x:auto;}
+        .note-box{background:var(--yellow-dim);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--yellow);margin:8px 0;}
+        .try-it{margin-top:8px;}
+        .try-result{margin-top:6px;display:none;}
         .try-result.visible{display:block;}
 
-        /* PAYMENT FLOW */
-        .flow-steps{display:flex;flex-direction:column;gap:0;margin:12px 0;}
-        .flow-step{display:flex;gap:14px;padding:12px 0;position:relative;}
-        .flow-step:not(:last-child)::after{content:'';position:absolute;left:13px;top:44px;bottom:0;width:2px;background:var(--card-border);}
-        .flow-num{width:28px;height:28px;border-radius:50%;background:var(--orange-dim);color:var(--orange);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
-        .flow-content{flex:1;}
-        .flow-content h4{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;}
-        .flow-content p{font-size:12px;color:var(--text2);}
+        /* FLOW */
+        .flow-steps{margin:8px 0;}
+        .flow-step{display:flex;gap:10px;padding:6px 0;position:relative;font-size:12px;}
+        .flow-step:not(:last-child)::after{content:'';position:absolute;left:10px;top:30px;bottom:0;width:1px;background:var(--card-border);}
+        .flow-num{width:22px;height:22px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+        .flow-content h4{font-size:12px;font-weight:600;color:var(--text);}
+        .flow-content p{font-size:11px;color:var(--text2);}
 
         /* JSON VIEWER */
-        .json-panel{padding:24px;}
-        .json-panel pre{background:#0a0a0f;border:1px solid var(--card-border);border-radius:10px;padding:20px;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--text2);overflow-x:auto;max-height:600px;overflow-y:auto;}
-        .json-key{color:var(--blue);}
-        .json-string{color:var(--green);}
-        .json-number{color:var(--yellow);}
-        .json-bool{color:var(--purple);}
-        .json-null{color:var(--red);}
+        .json-panel pre{background:#1a1f29;border-radius:4px;padding:12px;font-family:var(--mono);font-size:11px;line-height:1.5;color:#a8b1c0;overflow-x:auto;max-height:500px;overflow-y:auto;}
+        .json-key{color:#79c0ff;}
+        .json-string{color:#3fb950;}
+        .json-number{color:#d29922;}
+        .json-bool{color:#bc8cff;}
+        .json-null{color:#ff7b72;}
 
         /* FOOTER */
-        .footer{text-align:center;padding:32px 20px;color:var(--text3);font-size:12px;border-top:1px solid var(--card-border);margin-top:24px;line-height:1.8;}
-        .footer a{color:var(--orange);text-decoration:none;}
-        .footer .sep{color:var(--card-border);margin:0 4px;}
+        .footer{text-align:center;padding:12px;color:var(--text3);font-size:10px;border-top:1px solid var(--card-border);margin-top:12px;}
+        .footer a{color:var(--accent);text-decoration:none;}
 
         /* RESPONSIVE */
         @media(max-width:900px){
             .metrics{grid-template-columns:repeat(2,1fr);}
-            .aws-info{grid-template-columns:repeat(2,1fr);}
-            .aws-info .ai-cell:nth-child(2){border-right:none;}
-            .two-col,.hiw-steps{grid-template-columns:1fr;}
+            .info-bar{grid-template-columns:repeat(2,1fr);}
+            .info-bar .ib-cell:nth-child(2){border-right:none;}
+            .two-col,.hiw-grid{grid-template-columns:1fr;}
+            .chain-grid{grid-template-columns:repeat(2,1fr);}
+            .chain-item:nth-child(2){border-right:none;}
             .nav-tabs{display:none;}
             .gauge-wrap{flex-direction:column;}
         }
-        @media(max-width:500px){.metrics{grid-template-columns:1fr;}.hiw-steps{grid-template-columns:1fr;}.aws-info{grid-template-columns:1fr;}.aws-info .ai-cell{border-right:none;border-bottom:1px solid var(--card-border);}.aws-info .ai-cell:last-child{border-bottom:none;}}
+        @media(max-width:500px){.metrics{grid-template-columns:1fr;}.hiw-grid{grid-template-columns:1fr;}.info-bar{grid-template-columns:1fr;}.info-bar .ib-cell{border-right:none;border-bottom:1px solid var(--card-border);}.info-bar .ib-cell:last-child{border-bottom:none;}.chain-grid{grid-template-columns:1fr;}.chain-item{border-right:none;border-bottom:1px solid var(--card-border);}.chain-item:last-child{border-bottom:none;}}
 
-        /* SCROLLBAR */
-        ::-webkit-scrollbar{width:6px;height:6px;}
+        ::-webkit-scrollbar{width:5px;height:5px;}
         ::-webkit-scrollbar-track{background:transparent;}
-        ::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:3px;}
+        ::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px;}
     </style>
 </head>
 <body>
 
-<!-- NAV -->
 <nav class="nav">
     <div class="nav-left">
-        <a href="/" class="nav-logo">
-            <svg viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="5" fill="#232f3e"/><text x="13" y="17" text-anchor="middle" fill="#ec7211" font-size="12" font-weight="bold" font-family="sans-serif">N</text></svg>
-            <span><span class="logo-novnet">NovNet</span> x402 Insurance</span>
-        </a>
+        <a href="/" class="nav-logo">x402 Insurance</a>
         <div class="nav-tabs">
             <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
-            <button class="nav-tab" data-tab="docs">API Docs</button>
+            <button class="nav-tab" data-tab="docs">API</button>
             <button class="nav-tab" data-tab="pricing">Pricing</button>
             <button class="nav-tab" data-tab="agent-card">Agent Card</button>
         </div>
     </div>
     <div class="nav-right">
-        <span class="status-indicator"><span class="status-dot" id="statusDot"></span><span id="statusText">Checking...</span></span>
-        <span class="badge badge-blue">Base Mainnet</span>
+        <span class="status-indicator"><span class="status-dot" id="statusDot"></span><span id="statusText">--</span></span>
+        <span class="badge">Base Mainnet</span>
     </div>
 </nav>
 
 <div class="container">
 
-<!-- ==================== DASHBOARD TAB ==================== -->
+<!-- ==================== DASHBOARD ==================== -->
 <div id="tab-dashboard" class="tab-content active">
 
-    <div class="hero">
-        <h1><span>AgentCore</span> Service Dashboard</h1>
-        <p>Monitoring dashboard for the x402 Insurance Service powered by <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> zero knowledge machine learning. The primary service runs on <strong>AWS Bedrock AgentCore</strong> &mdash; this App Runner instance provides read-only status, documentation, and agent discovery.</p>
+    <div class="page-header" style="flex-direction:column;gap:2px;">
+        <h1>AWS AgentCore Service: Cryptographically Verified Insurance for x402 Micropayments</h1>
+        <p>Protect AI agents' API calls with instant, cryptographically-verified refunds on Base Mainnet &mdash; powered by <a href="https://aws.amazon.com/bedrock/" target="_blank">AgentCore</a> &amp; <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> zkML</p>
     </div>
 
-    <!-- AWS INFO -->
-    <div class="glass aws-info">
-        <div class="ai-cell"><span class="ai-label">AgentCore ARN</span><span class="ai-val">arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</span></div>
-        <div class="ai-cell"><span class="ai-label">App Runner ID</span><span class="ai-val">a54c141ba18a4b59b2adfb21bff52730</span></div>
-        <div class="ai-cell"><span class="ai-label">Region</span><span class="ai-val">us-east-1</span></div>
-        <div class="ai-cell"><span class="ai-label">Account</span><span class="ai-val">851725214068</span></div>
+    <div class="card info-bar">
+        <div class="ib-cell"><div class="ib-label">AgentCore ARN</div><div class="ib-val">arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</div></div>
+        <div class="ib-cell"><div class="ib-label">Port</div><div class="ib-val">8080</div></div>
+        <div class="ib-cell"><div class="ib-label">Region</div><div class="ib-val">us-east-1</div></div>
+        <div class="ib-cell"><div class="ib-label">Account</div><div class="ib-val">851725214068</div></div>
     </div>
 
-    <div class="refresh-note" id="refreshNote">Service is operational. Data refreshed at <span id="refreshTime">--</span>.</div>
-
-    <!-- METRICS -->
     <div class="metrics">
-        <div class="glass metric-card">
-            <div class="metric-label">System Status</div>
-            <div class="metric-value green" id="metricStatus">--</div>
-            <div class="metric-sub" id="metricStatusSub">production</div>
-        </div>
-        <div class="glass metric-card">
-            <div class="metric-label">Total Policies</div>
-            <div class="metric-value" id="metricPolicies">--</div>
-            <div class="metric-sub">Since deployment</div>
-        </div>
-        <div class="glass metric-card">
-            <div class="metric-label">Active Coverage</div>
-            <div class="metric-value blue" id="metricCoverage">--</div>
-            <div class="metric-sub">USDC insured</div>
-        </div>
-        <div class="glass metric-card">
-            <div class="metric-label">Claims Paid</div>
-            <div class="metric-value yellow" id="metricClaims">--</div>
-            <div class="metric-sub">Via ZK proofs</div>
-        </div>
+        <div class="card metric"><div class="metric-label">Status</div><div class="metric-value green" id="metricStatus">--</div><div class="metric-sub" id="metricStatusSub">production</div></div>
+        <div class="card metric"><div class="metric-label">Policies</div><div class="metric-value" id="metricPolicies">--</div><div class="metric-sub">total</div></div>
+        <div class="card metric"><div class="metric-label">Coverage</div><div class="metric-value blue" id="metricCoverage">--</div><div class="metric-sub">USDC active</div></div>
+        <div class="card metric"><div class="metric-label">Claims Paid</div><div class="metric-value yellow" id="metricClaims">--</div><div class="metric-sub">USDC</div></div>
     </div>
 
-    <!-- HEALTH -->
-    <div class="glass health-panel">
-        <div class="health-header">
-            <div class="section-title" style="margin-bottom:0;">Health Checks</div>
-            <button class="btn-refresh" onclick="fetchHealth()">Refresh</button>
-        </div>
-        <div class="health-grid" id="healthGrid">
-            <div class="health-item"><span class="dot warn"></span>Loading...</div>
-        </div>
+    <div class="status-line" id="refreshNote">Refreshed <span id="refreshTime">--</span></div>
+
+    <div class="card" style="margin-bottom:10px;">
+        <div class="card-header"><span>Health</span><button class="btn-ghost" onclick="fetchHealth()">Refresh</button></div>
+        <div class="card-body"><div class="health-grid" id="healthGrid"><div class="health-item"><span class="dot warn"></span>Loading...</div></div></div>
     </div>
 
-    <!-- RESERVE HEALTH -->
-    <div class="glass reserve-panel" id="reservePanel" style="display:none;">
-        <div class="section-title">Reserve Health</div>
-        <div class="gauge-wrap">
-            <div class="gauge">
-                <svg viewBox="0 0 120 120" width="120" height="120">
-                    <circle class="gauge-bg" cx="60" cy="60" r="50"/>
-                    <circle class="gauge-fill" id="gaugeFill" cx="60" cy="60" r="50" stroke="var(--green)" stroke-dasharray="314" stroke-dashoffset="314"/>
-                </svg>
-                <div class="gauge-text"><div class="ratio" id="gaugeRatio">--</div><div class="unit">ratio</div></div>
+    <div class="card reserve-panel" id="reservePanel" style="display:none;margin-bottom:10px;">
+        <div class="card-header">Reserve Health</div>
+        <div class="card-body">
+            <div class="gauge-wrap">
+                <div class="gauge">
+                    <svg viewBox="0 0 120 120" width="80" height="80"><circle class="gauge-bg" cx="60" cy="60" r="50"/><circle class="gauge-fill" id="gaugeFill" cx="60" cy="60" r="50" stroke="var(--green)" stroke-dasharray="314" stroke-dashoffset="314"/></svg>
+                    <div class="gauge-text"><div class="ratio" id="gaugeRatio">--</div><div class="unit">ratio</div></div>
+                </div>
+                <div class="reserve-details" id="reserveDetails"></div>
             </div>
-            <div class="reserve-details" id="reserveDetails"></div>
         </div>
     </div>
 
-    <!-- TABLES -->
     <div class="two-col">
-        <div class="glass table-panel">
-            <div class="section-title">Recent Policies</div>
+        <div class="card">
+            <div class="card-header">Recent Policies</div>
             <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Policy ID</th><th>Merchant</th><th>Coverage</th><th>Status</th><th>Created</th></tr></thead>
-                    <tbody id="policiesBody"><tr><td colspan="5"><div class="empty-msg">No policies yet. Agents create policies via POST /insure.</div></td></tr></tbody>
-                </table>
+                <table><thead><tr><th>ID</th><th>Merchant</th><th>Coverage</th><th>Status</th><th>Created</th></tr></thead>
+                <tbody id="policiesBody"><tr><td colspan="5"><div class="empty-msg">No policies yet</div></td></tr></tbody></table>
             </div>
         </div>
-        <div class="glass table-panel">
-            <div class="section-title">Recent Claims</div>
+        <div class="card">
+            <div class="card-header">Recent Claims</div>
             <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Claim ID</th><th>Payout</th><th>HTTP</th><th>Status</th><th>Verified</th><th>Created</th></tr></thead>
-                    <tbody id="claimsBody"><tr><td colspan="6"><div class="empty-msg">No claims yet. Agents submit claims via POST /claim.</div></td></tr></tbody>
-                </table>
+                <table><thead><tr><th>ID</th><th>Payout</th><th>HTTP</th><th>Status</th><th>Verified</th><th>Created</th></tr></thead>
+                <tbody id="claimsBody"><tr><td colspan="6"><div class="empty-msg">No claims yet</div></td></tr></tbody></table>
             </div>
         </div>
     </div>
 
-    <!-- HOW IT WORKS -->
-    <div class="glass how-it-works">
-        <div class="section-title">How It Works</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">The insurance service runs on <strong>AWS Bedrock AgentCore</strong> (port 8080). This dashboard is a read-only monitoring UI hosted on App Runner.</p>
-        <div class="hiw-steps">
-            <div class="hiw-step">
-                <div class="step-badge">1</div>
-                <h4>Agent Buys Coverage</h4>
-                <p>An AI agent sends a <strong>POST /insure</strong> request to the <strong>AgentCore service</strong> with an x402 V2 payment header. Premium is 1% of coverage amount. Payment is verified and settled on-chain via the x402.org facilitator.</p>
-            </div>
-            <div class="hiw-step">
-                <div class="step-badge">2</div>
-                <h4>API Call Fails</h4>
-                <p>The insured merchant API returns an error (HTTP 500-504) or an empty response. The agent captures the full HTTP response as evidence for the claim.</p>
-            </div>
-            <div class="hiw-step">
-                <div class="step-badge">3</div>
-                <h4>Submit Claim &amp; Generate Proof</h4>
-                <p>Agent sends <strong>POST /claim</strong> to the <strong>AgentCore service</strong>. The server re-fetches the merchant URL for fraud detection, then runs the <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> prover binary. This executes a trained ONNX neural network (<code>claim_classifier.onnx</code> &mdash; a 2-layer MLP classifying failure vs. success) inside a zkML circuit, producing a cryptographic proof of correct model execution.</p>
-            </div>
-            <div class="hiw-step">
-                <div class="step-badge">4</div>
-                <h4>Verify &amp; Refund On-Chain</h4>
-                <p>The zkML proof is verified &mdash; confirming the ONNX model was executed correctly over the claimed inputs (http_status, body_length, coverage_amount) and that the output classifies the response as a failure. If valid, USDC is transferred on Base Mainnet to the agent's wallet. The proof is publicly auditable via <strong>POST /verify</strong> on the AgentCore service.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- CURL EXAMPLES -->
-    <div class="glass curl-panel">
-        <div class="section-title">Quick Start</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">All write operations (insure, claim, verify) go to the <strong>AgentCore service</strong>. This dashboard serves discovery and health endpoints.</p>
-        <pre><span class="comment"># AgentCore service &mdash; full API (insure, claim, verify)</span>
-<span class="comment"># Use the AgentCore endpoint for all agent operations:</span>
-<span class="comment"># arn:aws:bedrock-agentcore:us-east-1:851725214068:runtime/agentcore_agent-mHkElJ7QNo</span>
-
-<span class="comment"># Dashboard &mdash; read-only endpoints</span>
-curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/health</span>
-curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known/agent-card.json</span></pre>
-    </div>
-
-    <!-- BLOCKCHAIN -->
-    <div class="glass chain-panel" id="chainPanel">
-        <div class="section-title">Blockchain</div>
-        <div class="chain-grid" id="chainGrid">
+    <div class="card" style="margin-bottom:10px;">
+        <div class="card-header">Blockchain</div>
+        <div class="chain-grid">
             <div class="chain-item"><div class="label">Wallet</div><div class="val mono" id="chainWallet">--</div></div>
             <div class="chain-item"><div class="label">Block</div><div class="val mono" id="chainBlock">--</div></div>
-            <div class="chain-item"><div class="label">ETH Balance</div><div class="val mono" id="chainEth">--</div></div>
-            <div class="chain-item"><div class="label">USDC Balance</div><div class="val mono" id="chainUsdc">--</div></div>
+            <div class="chain-item"><div class="label">ETH</div><div class="val mono" id="chainEth">--</div></div>
+            <div class="chain-item"><div class="label">USDC</div><div class="val mono" id="chainUsdc">--</div></div>
         </div>
     </div>
 
-    <!-- CLAIM LOOKUP -->
-    <div class="glass lookup-panel">
-        <div class="section-title">Claim Lookup</div>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:12px;">Enter a claim ID to view its status, proof data, and refund transaction.</p>
-        <div class="lookup-row">
-            <input type="text" id="lookupClaimId" placeholder="clm_..." />
-            <button class="btn" id="btnLookup" onclick="lookupClaim()">Lookup</button>
+    <div class="card" style="margin-bottom:10px;">
+        <div class="card-header collapse-toggle open" onclick="this.classList.toggle('open');this.nextElementSibling.style.display=this.classList.contains('open')?'':'none'"><span>How It Works</span><span class="chevron">&#9656;</span></div>
+        <div class="card-body">
+            <div class="hiw-grid">
+                <div class="hiw-step"><span class="step-num">1</span><h4>Buy Coverage</h4><p>Agent sends POST /insure with x402 payment. Premium is 1% of coverage. Settled on-chain via x402.org facilitator.</p></div>
+                <div class="hiw-step"><span class="step-num">2</span><h4>API Fails</h4><p>Merchant returns HTTP 500+ or empty response. Agent captures full HTTP response as evidence.</p></div>
+                <div class="hiw-step"><span class="step-num">3</span><h4>Claim &amp; Prove</h4><p>POST /claim triggers server re-fetch for fraud detection, then <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> generates a zkML proof over ONNX model inference.</p></div>
+                <div class="hiw-step"><span class="step-num">4</span><h4>Verify &amp; Refund</h4><p>zkML proof verified. If valid, USDC refund sent on Base Mainnet. Proof auditable via POST /verify.</p></div>
+            </div>
         </div>
-        <div class="lookup-result" id="lookupResult"><pre></pre></div>
+    </div>
+
+    <div class="two-col">
+        <div class="card">
+            <div class="card-header">Quick Start</div>
+            <div class="card-body">
+                <pre class="curl-block"><span class="comment"># Health check</span>
+curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/health</span>
+
+<span class="comment"># Agent discovery card</span>
+curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known/agent-card.json</span>
+
+<span class="comment"># Pricing info</span>
+curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/api/pricing</span></pre>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Claim Lookup</div>
+            <div class="card-body">
+                <div class="lookup-row">
+                    <input type="text" id="lookupClaimId" placeholder="claim ID..." />
+                    <button class="btn" id="btnLookup" onclick="lookupClaim()">Lookup</button>
+                </div>
+                <div class="lookup-result" id="lookupResult"><pre></pre></div>
+            </div>
+        </div>
     </div>
 
 </div>
 
-<!-- ==================== API DOCS TAB ==================== -->
+<!-- ==================== API DOCS ==================== -->
 <div id="tab-docs" class="tab-content">
 
-    <div style="padding:32px 0 24px;">
-        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">API Reference</h2>
-        <p style="color:var(--text2);font-size:14px;">Base URL (AgentCore): <span class="mono" style="color:var(--blue);" id="docsBaseUrl"></span></p>
-        <p style="color:var(--text3);font-size:12px;margin-top:4px;">Write endpoints (POST /insure, /claim, /renew, /verify) are served by the AgentCore service. "Try It" buttons hit this dashboard&rsquo;s local endpoints for read-only data.</p>
+    <div class="page-header" style="margin-bottom:8px;flex-direction:column;gap:2px;">
+        <h1>API Reference</h1>
+        <p>All endpoints for policy lifecycle, claims, and proof verification &mdash; Base URL: <span class="mono" style="color:var(--accent);" id="docsBaseUrl"></span></p>
     </div>
+    <p style="color:var(--text3);font-size:11px;margin-bottom:12px;">All endpoints served on port 8080. "Try It" calls the current host.</p>
 
-    <!-- x402 Payment Flow -->
-    <div class="glass" style="padding:24px;margin-bottom:24px;">
-        <div class="section-title">x402 Payment Flow</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Endpoints marked <span class="endpoint-badge badge-payment">x402</span> require payment. Follow this flow:</p>
-        <div class="flow-steps">
-            <div class="flow-step"><div class="flow-num">1</div><div class="flow-content"><h4>POST without payment</h4><p>Server responds 402 with <code>accepts</code> array describing amount, asset, payTo.</p></div></div>
-            <div class="flow-step"><div class="flow-num">2</div><div class="flow-content"><h4>Sign EIP-712 typed data</h4><p>Build payment message with amount, asset, nonce, timestamp. Sign with wallet key.</p></div></div>
-            <div class="flow-step"><div class="flow-num">3</div><div class="flow-content"><h4>Retry with PAYMENT-SIGNATURE header</h4><p>Base64-encode the signed payload. Server verifies via x402.org facilitator and settles on-chain.</p></div></div>
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-header">x402 Payment Flow</div>
+        <div class="card-body">
+            <div class="flow-steps">
+                <div class="flow-step"><div class="flow-num">1</div><div class="flow-content"><h4>POST without payment</h4><p>Server responds 402 with <code>accepts</code> array.</p></div></div>
+                <div class="flow-step"><div class="flow-num">2</div><div class="flow-content"><h4>Sign EIP-712 typed data</h4><p>Build payment message, sign with wallet key.</p></div></div>
+                <div class="flow-step"><div class="flow-num">3</div><div class="flow-content"><h4>Retry with PAYMENT-SIGNATURE header</h4><p>Server verifies via x402.org facilitator, settles on-chain.</p></div></div>
+            </div>
         </div>
     </div>
 
-    <!-- Discovery -->
-    <div style="margin-bottom:12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Discovery</h3></div>
+    <div style="margin-bottom:6px;"><span class="section-title">Discovery</span></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/.well-known/agent-card.json</span><span class="endpoint-desc">Agent discovery</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Capabilities, endpoints, pricing, agent guidance metadata.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/.well-known/agent-card.json',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api</span><span class="endpoint-desc">Service info</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Version, network, endpoints, x402 payment requirements.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api/pricing</span><span class="endpoint-desc">Pricing</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Premium rates, coverage limits, economics.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api/pricing',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
 
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/.well-known/agent-card.json</span><span class="endpoint-desc">Agent discovery card</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns capabilities, endpoints, pricing, and agent guidance metadata for service discovery.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/.well-known/agent-card.json',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api</span><span class="endpoint-desc">Service info</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns service metadata: version, network, endpoints, x402 payment requirements.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/api/pricing</span><span class="endpoint-desc">Pricing model</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Premium rates, coverage limits, and economic analysis.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/api/pricing',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
-
-    <!-- Policies -->
-    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Policies</h3></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/insure</span><span class="endpoint-desc">Create policy</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Creates insurance policy for a merchant API endpoint. Requires x402 payment (1% of coverage as premium).</p>
+    <div style="margin:12px 0 6px;"><span class="section-title">Policies</span></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/insure</span><span class="endpoint-desc">Create policy</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="color:var(--text2);margin-bottom:8px;">Create insurance policy. Requires x402 payment (1% premium).</p>
         <div class="sub-heading">Request Body</div>
         <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><span class="pn">merchant_url</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Merchant API endpoint to insure</td></tr>
-        <tr><td><span class="pn">coverage_amount</span></td><td><span class="pt">number</span></td><td><span class="po">optional</span></td><td>Coverage in USDC (0.001 - 0.1)</td></tr>
-        </table>
+        <tr><td><span class="pn">merchant_url</span></td><td><span class="pt">string</span></td><td><span class="pr">REQ</span></td><td>Merchant endpoint</td></tr>
+        <tr><td><span class="pn">coverage_amount</span></td><td><span class="pt">number</span></td><td><span class="po">opt</span></td><td>USDC (0.001-0.1)</td></tr></table>
         <div class="sub-heading">Response</div>
-        <pre class="code-block">{
-  "policy_id": "pol_abc123",
-  "agent_address": "0x...",
-  "merchant_url": "https://api.example.com/v1/data",
-  "coverage_amount": 0.01,
-  "premium": 0.0001,
-  "status": "active",
-  "expires_at": "2026-02-01T12:00:00Z"
-}</pre>
+        <pre class="code-block">{"policy_id":"pol_abc123","coverage_amount":0.01,"premium":0.0001,"status":"active"}</pre>
     </div></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/policies?wallet=0x...</span><span class="endpoint-desc">List policies</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns all policies for a wallet address.</p></div></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/renew</span><span class="endpoint-desc">Renew policy</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Extends an active policy. Renewal fee = coverage x 1% x (hours/24).</p>
-        <div class="sub-heading">Request Body</div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/policies?wallet=0x...</span><span class="endpoint-desc">List policies</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">All policies for a wallet address.</p></div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/renew</span><span class="endpoint-desc">Renew policy</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="color:var(--text2);margin-bottom:8px;">Extend active policy. Fee = coverage x 1% x (hours/24).</p>
         <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Policy to renew</td></tr>
-        <tr><td><span class="pn">extend_hours</span></td><td><span class="pt">number</span></td><td><span class="po">optional</span></td><td>Hours to extend (default 24, max 168)</td></tr>
-        </table>
+        <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQ</span></td><td>Policy to renew</td></tr>
+        <tr><td><span class="pn">extend_hours</span></td><td><span class="pt">number</span></td><td><span class="po">opt</span></td><td>Hours (default 24, max 168)</td></tr></table>
     </div></div>
 
-    <!-- Claims -->
-    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Claims</h3></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/claim</span><span class="endpoint-desc">Submit claim</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Submit a claim for a failed API call. Server re-fetches merchant URL, generates Jolt Atlas zkML proof over ONNX model inference, and issues USDC refund if valid.</p>
-        <div class="note-box"><strong>Fraud Detection:</strong> The server independently re-fetches the merchant URL to verify the failure. If the agent claims 5xx but the server sees 200, the claim is flagged.</div>
-        <div class="sub-heading">Request Body</div>
+    <div style="margin:12px 0 6px;"><span class="section-title">Claims</span></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/claim</span><span class="endpoint-desc">Submit claim</span><div class="endpoint-badges"><span class="endpoint-badge badge-payment">x402</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="color:var(--text2);margin-bottom:8px;">Claim for failed API call. Generates zkML proof, issues USDC refund.</p>
+        <div class="note-box"><strong>Fraud Detection:</strong> Server re-fetches merchant URL. Agent 5xx + server 200 = flagged.</div>
         <table class="param-table"><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Active policy ID</td></tr>
-        <tr><td><span class="pn">http_response.status</span></td><td><span class="pt">integer</span></td><td><span class="pr">REQUIRED</span></td><td>HTTP status code (e.g. 503)</td></tr>
-        <tr><td><span class="pn">http_response.body</span></td><td><span class="pt">string</span></td><td><span class="pr">REQUIRED</span></td><td>Response body</td></tr>
-        <tr><td><span class="pn">http_response.headers</span></td><td><span class="pt">object</span></td><td><span class="po">optional</span></td><td>Response headers</td></tr>
-        </table>
-        <div class="sub-heading">Query: <code>?async=true</code> for async processing</div>
-        <div class="sub-heading">Response</div>
-        <pre class="code-block">{
-  "claim_id": "clm_xyz789",
-  "status": "paid",
-  "payout_amount": 0.01,
-  "refund_tx_hash": "0xabc...def",
-  "server_verified": true,
-  "server_http_status": 503,
-  "generation_time_ms": 15200
-}</pre>
+        <tr><td><span class="pn">policy_id</span></td><td><span class="pt">string</span></td><td><span class="pr">REQ</span></td><td>Active policy ID</td></tr>
+        <tr><td><span class="pn">http_response.status</span></td><td><span class="pt">int</span></td><td><span class="pr">REQ</span></td><td>HTTP status code</td></tr>
+        <tr><td><span class="pn">http_response.body</span></td><td><span class="pt">string</span></td><td><span class="pr">REQ</span></td><td>Response body</td></tr>
+        <tr><td><span class="pn">http_response.headers</span></td><td><span class="pt">object</span></td><td><span class="po">opt</span></td><td>Headers</td></tr></table>
+        <div class="sub-heading">Query: <code>?async=true</code></div>
+    </div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/claims/:id</span><span class="endpoint-desc">Claim status</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Claim details. Poll for async claims.</p></div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/proofs/:id</span><span class="endpoint-desc">Proof data</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Full zkML proof, program_io, public inputs.</p></div></div>
+
+    <div style="margin:12px 0 6px;"><span class="section-title">Verification</span></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/verify</span><span class="endpoint-desc">Verify proof</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span><span class="endpoint-badge badge-rate">30/hr</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body">
+        <p style="color:var(--text2);margin-bottom:8px;">Verify a zkML proof independently.</p>
+        <pre class="code-block">{"proof":"base64-encoded","public_inputs":[1,503,0,10000]}</pre>
     </div></div>
 
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/claims/:claim_id</span><span class="endpoint-desc">Get claim status</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns claim details. Useful for polling async claims.</p></div></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/proofs/:claim_id</span><span class="endpoint-desc">Get proof data</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Returns the full Jolt Atlas zkML proof, program_io, and public inputs for a claim.</p></div></div>
-
-    <!-- Verification -->
-    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Verification</h3></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-post">POST</span><span class="endpoint-path">/verify</span><span class="endpoint-desc">Verify zkML proof</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span><span class="endpoint-badge badge-rate">30/hr</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Independently verify a Jolt Atlas zkML proof. Confirms the ONNX model was executed correctly and the output is valid. Public, rate-limited.</p>
-        <div class="sub-heading">Request Body</div>
-        <pre class="code-block">{
-  "proof": "base64-encoded-proof",
-  "public_inputs": [1, 503, 0, 10000]
-}</pre>
-    </div></div>
-
-    <!-- Health -->
-    <div style="margin:24px 0 12px;"><h3 style="font-size:14px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Health</h3></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/health</span><span class="endpoint-desc">Health check</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Service health including database, blockchain, prover, and reserve status. Use <code>?full=true</code> for blockchain details.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/health?full=true',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
-
-    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/ping</span><span class="endpoint-desc">Liveness probe</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="chevron">&#9656;</span></div><div class="endpoint-body"><p style="font-size:13px;color:var(--text2);">Lightweight liveness check. Returns <code>{"status":"ok"}</code>.</p></div></div>
+    <div style="margin:12px 0 6px;"><span class="section-title">Health</span></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/health</span><span class="endpoint-desc">Health check</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Database, blockchain, prover, reserve status. <code>?full=true</code> for details.</p><div class="try-it"><button class="btn btn-sm" onclick="tryEndpoint('/health?full=true',this)">Try It</button><div class="try-result"><pre></pre></div></div></div></div>
+    <div class="endpoint-card"><div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')"><span class="endpoint-method method-get">GET</span><span class="endpoint-path">/ping</span><span class="endpoint-desc">Liveness</span><div class="endpoint-badges"><span class="endpoint-badge badge-public">Public</span></div><span class="ep-chevron">&#9656;</span></div><div class="endpoint-body"><p style="color:var(--text2)">Returns <code>{"status":"ok"}</code>.</p></div></div>
 
 </div>
 
-<!-- ==================== PRICING TAB ==================== -->
+<!-- ==================== PRICING ==================== -->
 <div id="tab-pricing" class="tab-content">
-    <div style="padding:32px 0 24px;">
-        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">Pricing</h2>
-        <p style="color:var(--text2);font-size:14px;">Live pricing data from <span class="mono" style="color:var(--blue);">/api/pricing</span></p>
-    </div>
-    <div class="glass json-panel">
-        <pre id="pricingJson">Loading...</pre>
-    </div>
+    <div class="page-header" style="margin-bottom:10px;flex-direction:column;gap:2px;"><h1>Pricing &amp; Economics</h1><p>1% premium for 100% coverage &mdash; live data from /api/pricing</p></div>
+    <div class="card"><div class="card-body json-panel"><pre id="pricingJson">Loading...</pre></div></div>
 </div>
 
-<!-- ==================== AGENT CARD TAB ==================== -->
+<!-- ==================== AGENT CARD ==================== -->
 <div id="tab-agent-card" class="tab-content">
-    <div style="padding:32px 0 24px;">
-        <h2 style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">Agent Discovery Card</h2>
-        <p style="color:var(--text2);font-size:14px;">Live from <span class="mono" style="color:var(--blue);">/.well-known/agent-card.json</span></p>
-    </div>
-    <div class="glass json-panel">
-        <pre id="agentCardJson">Loading...</pre>
-    </div>
+    <div class="page-header" style="margin-bottom:10px;flex-direction:column;gap:2px;"><h1>Agent Discovery Card</h1><p>A2A-compatible agent card for automated discovery &mdash; live from /.well-known/agent-card.json</p></div>
+    <div class="card"><div class="card-body json-panel"><pre id="agentCardJson">Loading...</pre></div></div>
 </div>
 
-</div><!-- /container -->
+</div>
 
-<!-- FOOTER -->
 <div class="footer">
-    NovNet x402 Insurance &mdash; Primary service on
-    <a href="https://aws.amazon.com/bedrock/" target="_blank">AWS Bedrock AgentCore</a> &middot; Dashboard on
-    <a href="https://aws.amazon.com/apprunner/" target="_blank">AWS App Runner</a> (read-only)
-    <span class="sep">|</span>
-    <a href="#" onclick="event.preventDefault();document.querySelector('[data-tab=docs]').click();">API Docs</a>
-    <span class="sep">|</span>
-    <a href="/.well-known/agent-card.json">Agent Card</a>
-    <span class="sep">|</span>
-    Base Mainnet &middot; x402 Protocol &middot;
-    <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas zkML</a>
+    x402 Insurance &mdash;
+    <a href="https://aws.amazon.com/bedrock/" target="_blank">AgentCore</a> &middot;
+    <a href="https://aws.amazon.com/apprunner/" target="_blank">App Runner</a> &middot;
+    <a href="/.well-known/agent-card.json">Agent Card</a> &middot;
+    <a href="https://github.com/ICME-Lab/jolt-atlas" target="_blank">Jolt Atlas</a> &middot;
+    Base Mainnet
 </div>
 
 <script>
 (function(){
     var $=function(id){return document.getElementById(id);};
-
-    /* ---- TAB SWITCHING ---- */
     var tabs=document.querySelectorAll('.nav-tab');
     tabs.forEach(function(t){
         t.addEventListener('click',function(){
@@ -576,52 +456,23 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
             t.classList.add('active');
             document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
             $('tab-'+t.dataset.tab).classList.add('active');
-            if(t.dataset.tab==='pricing'&&!window._pricingLoaded){loadJson('/api/pricing','pricingJson');window._pricingLoaded=true;}
-            if(t.dataset.tab==='agent-card'&&!window._agentCardLoaded){loadJson('/.well-known/agent-card.json','agentCardJson');window._agentCardLoaded=true;}
+            if(t.dataset.tab==='pricing'&&!window._pL){loadJson('/api/pricing','pricingJson');window._pL=1;}
+            if(t.dataset.tab==='agent-card'&&!window._aL){loadJson('/.well-known/agent-card.json','agentCardJson');window._aL=1;}
         });
     });
-
     var hash=window.location.hash.replace('#','');
-    if(hash&&$('tab-'+hash)){
-        tabs.forEach(function(t){t.classList.remove('active');if(t.dataset.tab===hash)t.classList.add('active');});
-        document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
-        $('tab-'+hash).classList.add('active');
-    }
+    if(hash&&$('tab-'+hash)){tabs.forEach(function(t){t.classList.remove('active');if(t.dataset.tab===hash)t.classList.add('active');});document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});$('tab-'+hash).classList.add('active');}
 
-    /* ---- HELPERS ---- */
-    function truncate(s,n){if(!s)return '--';return s.length>n?s.slice(0,n)+'...':s;}
-    function hostname(url){try{return new URL(url).hostname;}catch(e){return url||'--';}}
-    function fmtDate(d){if(!d)return '--';var dt=new Date(d);return dt.toLocaleDateString()+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
-    function fmtTime(){return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});}
-    function tagHtml(status){
-        var s=(status||'').toLowerCase();var cls='tag ';
-        if(s==='active')cls+='tag-active';
-        else if(s==='expired'||s==='denied'||s==='rejected')cls+='tag-expired';
-        else if(s==='pending'||s==='processing')cls+='tag-pending';
-        else if(s==='approved'||s==='paid')cls+='tag-approved';
-        else cls+='tag-pending';
-        return '<span class="'+cls+'">'+status+'</span>';
-    }
-    function verifiedTag(v){
-        if(v===true)return '<span class="tag tag-verified">Yes</span>';
-        if(v===false)return '<span class="tag tag-expired">No</span>';
-        return '<span style="color:var(--text3)">--</span>';
-    }
-    function syntaxHighlight(json){
-        return json.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,function(m){
-                var c='json-number';if(/^"/.test(m)){c=/:$/.test(m)?'json-key':'json-string';}else if(/true|false/.test(m)){c='json-bool';}else if(/null/.test(m)){c='json-null';}
-                return '<span class="'+c+'">'+m+'</span>';
-            });
-    }
-    function loadJson(url,elemId){
-        fetch(url).then(function(r){return r.json();}).then(function(d){
-            $(elemId).innerHTML=syntaxHighlight(JSON.stringify(d,null,2));
-        }).catch(function(e){$(elemId).textContent='Error: '+e.message;});
-    }
+    function tr(s,n){if(!s)return'--';return s.length>n?s.slice(0,n)+'...':s;}
+    function hn(u){try{return new URL(u).hostname;}catch(e){return u||'--';}}
+    function fd(d){if(!d)return'--';var t=new Date(d);return t.toLocaleDateString()+' '+t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+    function ft(){return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});}
+    function tag(s){var l=(s||'').toLowerCase(),c='tag ';if(l==='active')c+='tag-active';else if(l==='expired'||l==='denied'||l==='rejected')c+='tag-expired';else if(l==='pending'||l==='processing')c+='tag-pending';else if(l==='approved'||l==='paid')c+='tag-approved';else c+='tag-pending';return'<span class="'+c+'">'+s+'</span>';}
+    function vt(v){if(v===true)return'<span class="tag tag-verified">Yes</span>';if(v===false)return'<span class="tag tag-expired">No</span>';return'<span style="color:var(--text3)">--</span>';}
+    function sh(j){return j.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,function(m){var c='json-number';if(/^"/.test(m)){c=/:$/.test(m)?'json-key':'json-string';}else if(/true|false/.test(m)){c='json-bool';}else if(/null/.test(m)){c='json-null';}return'<span class="'+c+'">'+m+'</span>';});}
+    function loadJson(u,id){fetch(u).then(function(r){return r.json();}).then(function(d){$(id).innerHTML=sh(JSON.stringify(d,null,2));}).catch(function(e){$(id).textContent='Error: '+e.message;});}
 
-    /* ---- DASHBOARD DATA ---- */
-    function updateDashboard(data){
+    function upd(data){
         var s=data.stats||{};
         $('metricPolicies').textContent=s.total_policies!=null?s.total_policies:'0';
         $('metricCoverage').textContent='$'+(s.total_coverage!=null?parseFloat(s.total_coverage).toFixed(2):'0.00');
@@ -629,130 +480,24 @@ curl <span class="url">https://4axkjkepdx.us-east-1.awsapprunner.com/.well-known
         $('metricStatus').textContent='Healthy';$('metricStatus').className='metric-value green';
         $('metricStatusSub').textContent='production';
         $('statusDot').className='status-dot';$('statusText').textContent='Healthy';
-        $('refreshTime').textContent=fmtTime();
-
+        $('refreshTime').textContent=ft();
         var bc=data.blockchain||{};
-        if(bc.wallet_address){
-            $('chainWallet').textContent=bc.wallet_address;
-            $('chainBlock').textContent=bc.block_number?Number(bc.block_number).toLocaleString():'--';
-            $('chainEth').textContent=bc.eth_balance!=null?bc.eth_balance+' ETH':'--';
-            $('chainUsdc').textContent=bc.usdc_balance!=null?bc.usdc_balance+' USDC':'--';
-        }else{
-            $('chainWallet').textContent='0x0e9AFe2499211c3E35e570968d1047Fcf7488c60';
-            $('chainBlock').textContent='--';$('chainEth').textContent='--';$('chainUsdc').textContent='--';
-        }
-
-        var policies=data.recent_policies||[];
-        var pb=$('policiesBody');
-        if(!policies.length){pb.innerHTML='<tr><td colspan="5"><div class="empty-msg">No policies yet. Agents create policies via POST /insure.</div></td></tr>';
-        }else{
-            pb.innerHTML=policies.map(function(p){
-                return '<tr><td class="mono"><span class="truncate" title="'+(p.policy_id||'')+'">'+truncate(p.policy_id,14)+'</span></td>'
-                    +'<td>'+hostname(p.merchant_url)+'</td>'
-                    +'<td class="mono">$'+(p.coverage_amount!=null?parseFloat(p.coverage_amount).toFixed(4):'--')+'</td>'
-                    +'<td>'+tagHtml(p.status)+'</td>'
-                    +'<td>'+fmtDate(p.created_at)+'</td></tr>';
-            }).join('');
-        }
-
-        var claims=data.recent_claims||[];
-        var cb=$('claimsBody');
-        if(!claims.length){cb.innerHTML='<tr><td colspan="6"><div class="empty-msg">No claims yet. Agents submit claims via POST /claim.</div></td></tr>';
-        }else{
-            cb.innerHTML=claims.map(function(c){
-                return '<tr><td class="mono"><span class="truncate" title="'+(c.claim_id||'')+'">'+truncate(c.claim_id,14)+'</span></td>'
-                    +'<td class="mono">$'+(c.payout_amount!=null?parseFloat(c.payout_amount).toFixed(4):'--')+'</td>'
-                    +'<td class="mono">'+(c.http_status||'--')+'</td>'
-                    +'<td>'+tagHtml(c.status)+'</td>'
-                    +'<td>'+verifiedTag(c.server_verified)+'</td>'
-                    +'<td>'+fmtDate(c.created_at)+'</td></tr>';
-            }).join('');
-        }
+        if(bc.wallet_address){$('chainWallet').textContent=bc.wallet_address;$('chainBlock').textContent=bc.block_number?Number(bc.block_number).toLocaleString():'--';$('chainEth').textContent=bc.eth_balance!=null?bc.eth_balance+' ETH':'--';$('chainUsdc').textContent=bc.usdc_balance!=null?bc.usdc_balance+' USDC':'--';}
+        else{$('chainWallet').textContent='0x0e9AFe2499211c3E35e570968d1047Fcf7488c60';$('chainBlock').textContent='--';$('chainEth').textContent='--';$('chainUsdc').textContent='--';}
+        var p=data.recent_policies||[],pb=$('policiesBody');
+        if(!p.length){pb.innerHTML='<tr><td colspan="5"><div class="empty-msg">No policies yet</div></td></tr>';}
+        else{pb.innerHTML=p.map(function(x){return'<tr><td class="mono"><span class="truncate" title="'+(x.policy_id||'')+'">'+tr(x.policy_id,12)+'</span></td><td>'+hn(x.merchant_url)+'</td><td class="mono">$'+(x.coverage_amount!=null?parseFloat(x.coverage_amount).toFixed(4):'--')+'</td><td>'+tag(x.status)+'</td><td>'+fd(x.created_at)+'</td></tr>';}).join('');}
+        var c=data.recent_claims||[],cb=$('claimsBody');
+        if(!c.length){cb.innerHTML='<tr><td colspan="6"><div class="empty-msg">No claims yet</div></td></tr>';}
+        else{cb.innerHTML=c.map(function(x){return'<tr><td class="mono"><span class="truncate" title="'+(x.claim_id||'')+'">'+tr(x.claim_id,12)+'</span></td><td class="mono">$'+(x.payout_amount!=null?parseFloat(x.payout_amount).toFixed(4):'--')+'</td><td class="mono">'+(x.http_status||'--')+'</td><td>'+tag(x.status)+'</td><td>'+vt(x.server_verified)+'</td><td>'+fd(x.created_at)+'</td></tr>';}).join('');}
     }
-
-    function fetchDashboardData(){
-        fetch('/api/dashboard').then(function(r){return r.json();}).then(updateDashboard)
-        .catch(function(){
-            $('metricStatus').textContent='Error';$('metricStatus').className='metric-value';$('metricStatus').style.color='var(--red)';
-            $('metricStatusSub').textContent='Could not reach API';
-            $('statusDot').className='status-dot error';$('statusText').textContent='Offline';
-        });
-    }
-
-    window.fetchHealth=function(){
-        fetch('/health').then(function(r){return r.json();}).then(function(d){
-            var checks=d.checks||d;
-            var grid=$('healthGrid');
-            if(typeof checks==='object'&&!Array.isArray(checks)){
-                var keys=Object.keys(checks);
-                grid.innerHTML=keys.map(function(k){
-                    var v=checks[k];
-                    var ok=(v===true||v==='ok'||v==='healthy'||(typeof v==='object'&&(v.status==='ok'||v.status==='healthy'||v.status==='operational'||v.healthy===true)));
-                    var skip=(typeof v==='object'&&v.status==='skipped');
-                    var warn=(v==='degraded'||(typeof v==='object'&&(v.status==='degraded'||v.status==='disabled')));
-                    var cls=ok?'ok':(skip?'warn':(warn?'warn':'fail'));
-                    var detail=typeof v==='object'?(v.status||v.message||v.mode||JSON.stringify(v)):(v===true?'ok':v===false?'fail':v);
-                    return '<div class="health-item"><span class="dot '+cls+'"></span><span><strong>'+k+'</strong>: '+detail+'</span></div>';
-                }).join('');
-            }
-        }).catch(function(){
-            $('healthGrid').innerHTML='<div class="health-item"><span class="dot fail"></span>Health endpoint unreachable</div>';
-        });
-    };
-
-    function fetchReserves(){
-        fetch('/api/reserves').then(function(r){if(!r.ok)throw new Error('n/a');return r.json();}).then(function(d){
-            if(!d||!d.reserve_ratio)return;
-            $('reservePanel').style.display='';
-            var ratio=parseFloat(d.reserve_ratio)||0;
-            var pct=Math.min(ratio/3,1);
-            var offset=314-(314*pct);
-            var fill=$('gaugeFill');
-            fill.style.strokeDashoffset=offset;
-            fill.style.stroke=ratio>=1.5?'var(--green)':(ratio>=1.0?'var(--yellow)':'var(--red)');
-            $('gaugeRatio').textContent=ratio.toFixed(2)+'x';
-            var det=$('reserveDetails');
-            det.innerHTML=[
-                ['Status',d.status||'--'],
-                ['USDC Balance',(d.usdc_balance||'--')+' USDC'],
-                ['Active Coverage',(d.active_coverage||'--')+' USDC'],
-                ['Min Ratio',d.min_ratio||'1.5x']
-            ].map(function(r){return '<div class="reserve-row"><span class="rlabel">'+r[0]+'</span><span class="rval">'+r[1]+'</span></div>';}).join('');
-        }).catch(function(){});
-    }
-
-    /* ---- CLAIM LOOKUP ---- */
-    window.lookupClaim=function(){
-        var id=$('lookupClaimId').value.trim();if(!id)return;
-        var btn=$('btnLookup');var res=$('lookupResult');var pre=res.querySelector('pre');
-        btn.disabled=true;btn.textContent='Looking up...';
-        res.classList.add('visible');pre.textContent='Fetching...';
-        fetch('/claims/'+encodeURIComponent(id))
-        .then(function(r){return r.json();})
-        .then(function(d){pre.innerHTML=syntaxHighlight(JSON.stringify(d,null,2));})
-        .catch(function(e){pre.textContent='Error: '+e.message;})
-        .finally(function(){btn.disabled=false;btn.textContent='Lookup';});
-    };
-
-    /* ---- TRY IT ---- */
-    window.tryEndpoint=function(url,btnElem){
-        var container=btnElem.nextElementSibling;
-        var pre=container.querySelector('pre');
-        btnElem.disabled=true;btnElem.textContent='Loading...';
-        container.classList.add('visible');pre.textContent='Fetching...';
-        fetch(url).then(function(r){return r.json();}).then(function(d){
-            pre.innerHTML=syntaxHighlight(JSON.stringify(d,null,2));
-        }).catch(function(e){pre.textContent='Error: '+e.message;})
-        .finally(function(){btnElem.disabled=false;btnElem.textContent='Try It';});
-    };
-
+    function fetchDash(){fetch('/api/dashboard').then(function(r){return r.json();}).then(upd).catch(function(){$('metricStatus').textContent='Error';$('metricStatus').className='metric-value';$('metricStatus').style.color='var(--red)';$('metricStatusSub').textContent='API unreachable';$('statusDot').className='status-dot error';$('statusText').textContent='Offline';});}
+    window.fetchHealth=function(){fetch('/health').then(function(r){return r.json();}).then(function(d){var ch=d.checks||d,g=$('healthGrid');if(typeof ch==='object'&&!Array.isArray(ch)){g.innerHTML=Object.keys(ch).map(function(k){var v=ch[k],ok=(v===true||v==='ok'||v==='healthy'||(typeof v==='object'&&(v.status==='ok'||v.status==='healthy'||v.status==='operational'||v.healthy===true))),w=(v==='degraded'||(typeof v==='object'&&(v.status==='degraded'||v.status==='disabled'||v.status==='skipped'))),cls=ok?'ok':(w?'warn':'fail'),det=typeof v==='object'?(v.status||v.message||v.mode||JSON.stringify(v)):(v===true?'ok':v===false?'fail':v);return'<div class="health-item"><span class="dot '+cls+'"></span><span><strong>'+k+'</strong>: '+det+'</span></div>';}).join('');}}).catch(function(){$('healthGrid').innerHTML='<div class="health-item"><span class="dot fail"></span>Unreachable</div>';});};
+    function fetchRes(){fetch('/api/reserves').then(function(r){if(!r.ok)throw new Error;return r.json();}).then(function(d){if(!d||!d.reserve_ratio)return;$('reservePanel').style.display='';var r=parseFloat(d.reserve_ratio)||0,p=Math.min(r/3,1),o=314-(314*p),f=$('gaugeFill');f.style.strokeDashoffset=o;f.style.stroke=r>=1.5?'var(--green)':(r>=1?'var(--yellow)':'var(--red)');$('gaugeRatio').textContent=r.toFixed(2)+'x';$('reserveDetails').innerHTML=[['Status',d.status||'--'],['USDC',(d.usdc_balance||'--')],['Coverage',(d.active_coverage||'--')],['Min Ratio',d.min_ratio||'1.5x']].map(function(x){return'<div class="reserve-row"><span class="rlabel">'+x[0]+'</span><span class="rval">'+x[1]+'</span></div>';}).join('');}).catch(function(){});}
+    window.lookupClaim=function(){var id=$('lookupClaimId').value.trim();if(!id)return;var b=$('btnLookup'),r=$('lookupResult'),p=r.querySelector('pre');b.disabled=true;b.textContent='...';r.classList.add('visible');p.textContent='Fetching...';fetch('/claims/'+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){p.innerHTML=sh(JSON.stringify(d,null,2));}).catch(function(e){p.textContent='Error: '+e.message;}).finally(function(){b.disabled=false;b.textContent='Lookup';});};
+    window.tryEndpoint=function(u,btn){var c=btn.nextElementSibling,p=c.querySelector('pre');btn.disabled=true;btn.textContent='...';c.classList.add('visible');p.textContent='Fetching...';fetch(u).then(function(r){return r.json();}).then(function(d){p.innerHTML=sh(JSON.stringify(d,null,2));}).catch(function(e){p.textContent='Error: '+e.message;}).finally(function(){btn.disabled=false;btn.textContent='Try It';});};
     if($('docsBaseUrl'))$('docsBaseUrl').textContent=window.location.origin;
-
-    fetchDashboardData();
-    fetchHealth();
-    fetchReserves();
-    setInterval(fetchDashboardData,15000);
-    setInterval(fetchHealth,30000);
+    fetchDash();fetchHealth();fetchRes();setInterval(fetchDash,15000);setInterval(fetchHealth,30000);
 })();
 </script>
 </body>

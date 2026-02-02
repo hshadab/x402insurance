@@ -29,10 +29,10 @@ def insure():
         return jsonify({"error": "Missing merchant_url or coverage_amount"}), 400
     if coverage_amount <= 0:
         return jsonify({"error": "Coverage amount must be positive"}), 400
-    if coverage_amount > ext.MAX_COVERAGE:
-        return jsonify({"error": f"Coverage exceeds maximum of {ext.MAX_COVERAGE} USDC"}), 400
+    if coverage_amount > current_app.config["MAX_COVERAGE_USDC"]:
+        return jsonify({"error": f"Coverage exceeds maximum of {current_app.config["MAX_COVERAGE_USDC"]} USDC"}), 400
 
-    premium = float(Decimal(str(coverage_amount)) * Decimal(str(ext.PREMIUM_PERCENTAGE)))
+    premium = float(Decimal(str(coverage_amount)) * Decimal(str(current_app.config["PREMIUM_PERCENTAGE"])))
     premium_units = to_micro(premium)
 
     payment_header = getattr(g, 'payment_header', None)
@@ -43,7 +43,7 @@ def insure():
             "x402Version": 2,
             "accepts": [{
                 "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-                "amount": str(premium_units), "asset": ext.USDC_ADDRESS,
+                "amount": str(premium_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
                 "payTo": ext.BACKEND_ADDRESS, "maxTimeoutSeconds": 60, "extra": {},
                 "description": "Insurance premium (1% of requested coverage)"
             }],
@@ -67,7 +67,7 @@ def insure():
             "x402Version": 2,
             "accepts": [{
                 "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-                "amount": str(premium_units), "asset": ext.USDC_ADDRESS,
+                "amount": str(premium_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
                 "payTo": ext.BACKEND_ADDRESS, "maxTimeoutSeconds": 60, "extra": {}
             }],
             "resource": {"url": "/insure", "method": "POST"}
@@ -86,7 +86,7 @@ def insure():
     settlement_status = "pending"
     payment_requirements = {
         "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-        "maxAmountRequired": str(premium_units), "asset": ext.USDC_ADDRESS,
+        "maxAmountRequired": str(premium_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
         "payTo": ext.BACKEND_ADDRESS, "maxTimeoutSeconds": 60, "extra": {},
     }
     settle_result = ext.payment_verifier.settle_payment(
@@ -109,7 +109,7 @@ def insure():
         "coverage_amount": coverage_amount, "coverage_amount_units": to_micro(coverage_amount),
         "premium": premium, "premium_units": premium_units,
         "status": "active", "created_at": iso_utc_now(),
-        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=ext.POLICY_DURATION)).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=current_app.config["POLICY_DURATION_HOURS"])).isoformat(),
         "settlement_tx": settlement_tx,
         "settlement_status": settlement_status,
     }
@@ -189,7 +189,7 @@ def renew_policy():
 
     hours_per_day = 24
     days_extended = extend_hours / hours_per_day
-    renewal_fee = policy['coverage_amount'] * ext.PREMIUM_PERCENTAGE * days_extended
+    renewal_fee = policy['coverage_amount'] * current_app.config["PREMIUM_PERCENTAGE"] * days_extended
     renewal_fee_units = to_micro(renewal_fee)
 
     payment_header = (
@@ -202,7 +202,7 @@ def renew_policy():
             "x402Version": 2,
             "accepts": [{
                 "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-                "amount": str(renewal_fee_units), "asset": ext.USDC_ADDRESS,
+                "amount": str(renewal_fee_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
                 "payTo": ext.BACKEND_ADDRESS,
                 "description": f"Policy renewal fee for {extend_hours} hours extension",
                 "maxTimeoutSeconds": 60, "extra": {}
@@ -229,7 +229,7 @@ def renew_policy():
         return jsonify({
             "error": "Payment verification failed",
             "expected_amount": str(renewal_fee_units),
-            "asset": {"address": ext.USDC_ADDRESS, "decimals": 6, "symbol": "USDC"},
+            "asset": {"address": current_app.config["USDC_CONTRACT_ADDRESS"], "decimals": 6, "symbol": "USDC"},
             "pay_to": ext.BACKEND_ADDRESS
         }), 402
 
@@ -241,7 +241,7 @@ def renew_policy():
     renewal_settlement_status = "pending"
     payment_requirements = {
         "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-        "maxAmountRequired": str(renewal_fee_units), "asset": ext.USDC_ADDRESS,
+        "maxAmountRequired": str(renewal_fee_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
         "payTo": ext.BACKEND_ADDRESS, "maxTimeoutSeconds": 60, "extra": {},
     }
     settle_result = ext.payment_verifier.settle_payment(

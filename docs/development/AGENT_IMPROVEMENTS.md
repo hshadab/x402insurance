@@ -75,14 +75,14 @@ import hashlib
 idempotency_key = hashlib.sha256(f"{policy_id}:{timestamp}".encode()).hexdigest()
 
 # First request
-response = requests.post('/claim',
+response = httpx.post('/claim',
     headers={'Idempotency-Key': idempotency_key},
     json=claim_data
 )
 # Returns 201 Created
 
 # Retry (network error, timeout, etc.)
-response = requests.post('/claim',
+response = httpx.post('/claim',
     headers={'Idempotency-Key': idempotency_key},  # Same key
     json=claim_data
 )
@@ -106,11 +106,11 @@ response = requests.post('/claim',
 **Usage:**
 ```python
 # Submit claim
-claim_response = requests.post('/claim', json=claim_data)
+claim_response = httpx.post('/claim', json=claim_data)
 claim_id = claim_response.json()['claim_id']
 
 # Poll for status (useful for async workflows or after network errors)
-status = requests.get(f'/claims/{claim_id}').json()
+status = httpx.get(f'/claims/{claim_id}').json()
 # {
 #   "claim_id": "uuid",
 #   "policy_id": "uuid",

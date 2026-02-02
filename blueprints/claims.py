@@ -123,7 +123,7 @@ def claim():
                 "x402Version": 2,
                 "accepts": [{
                     "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-                    "amount": str(claim_fee_units), "asset": ext.USDC_ADDRESS,
+                    "amount": str(claim_fee_units), "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
                     "payTo": ext.BACKEND_ADDRESS, "maxTimeoutSeconds": 60, "extra": {},
                     "description": "Claim submission fee (anti-spam)"
                 }],

@@ -1,7 +1,7 @@
 """
 Discovery blueprint — /, /docs, /api, /api/dashboard, /api/pricing, /.well-known/agent-card.json
 """
-from flask import Blueprint, request, jsonify, send_from_directory, redirect
+from flask import Blueprint, request, jsonify, send_from_directory, redirect, current_app
 import extensions as ext
 
 discovery_bp = Blueprint('discovery', __name__)
@@ -50,8 +50,8 @@ def api_info():
                 {
                     "scheme": "exact",
                     "network": cfg.CAIP2_NETWORK,
-                    "maxAmountRequired": str(int(ext.MAX_COVERAGE * ext.PREMIUM_PERCENTAGE * 1_000_000)),
-                    "asset": ext.USDC_ADDRESS,
+                    "maxAmountRequired": str(int(current_app.config["MAX_COVERAGE_USDC"] * current_app.config["PREMIUM_PERCENTAGE"] * 1_000_000)),
+                    "asset": current_app.config["USDC_CONTRACT_ADDRESS"],
                     "payTo": ext.BACKEND_ADDRESS,
                     "description": "Insurance premium (1% of requested coverage)",
                     "maxTimeoutSeconds": 60,
@@ -137,8 +137,8 @@ def pricing_info():
     return jsonify({
         "premium": {
             "model": "percentage-based",
-            "percentage": ext.PREMIUM_PERCENTAGE,
-            "percentage_display": f"{ext.PREMIUM_PERCENTAGE * 100}%",
+            "percentage": current_app.config["PREMIUM_PERCENTAGE"],
+            "percentage_display": f"{current_app.config["PREMIUM_PERCENTAGE"] * 100}%",
             "calculation": "premium = coverage × percentage",
             "currency": "USDC",
             "network": cfg.CAIP2_NETWORK,
@@ -149,20 +149,20 @@ def pricing_info():
             }
         },
         "coverage": {
-            "min": 0.001, "max": ext.MAX_COVERAGE, "currency": "USDC",
+            "min": 0.001, "max": current_app.config["MAX_COVERAGE_USDC"], "currency": "USDC",
             "recommended": 0.01,
-            "display": f"$0.001 - ${ext.MAX_COVERAGE}",
+            "display": f"$0.001 - ${current_app.config["MAX_COVERAGE_USDC"]}",
             "note": "Maximum coverage per claim is 0.1 USDC for micropayment protection"
         },
         "policy_duration": {
-            "hours": ext.POLICY_DURATION,
-            "seconds": ext.POLICY_DURATION * 3600,
-            "display": f"{ext.POLICY_DURATION} hours"
+            "hours": current_app.config["POLICY_DURATION_HOURS"],
+            "seconds": current_app.config["POLICY_DURATION_HOURS"] * 3600,
+            "display": f"{current_app.config["POLICY_DURATION_HOURS"]} hours"
         },
         "payment": {
             "protocol": "x402",
             "network": cfg.CAIP2_NETWORK,
-            "token": {"symbol": "USDC", "name": "USD Coin", "address": ext.USDC_ADDRESS, "decimals": 6},
+            "token": {"symbol": "USDC", "name": "USD Coin", "address": current_app.config["USDC_CONTRACT_ADDRESS"], "decimals": 6},
             "payTo": ext.BACKEND_ADDRESS
         },
         "economics": {
@@ -204,9 +204,9 @@ def agent_card():
                 "endpoint": f"{base_url}/insure", "method": "POST", "x402Required": True,
                 "accepts": [{
                     "scheme": "exact", "network": cfg.CAIP2_NETWORK,
-                    "maxAmountRequired": str(int(ext.MAX_COVERAGE * ext.PREMIUM_PERCENTAGE * 1_000_000)),
-                    "asset": ext.USDC_ADDRESS, "payTo": ext.BACKEND_ADDRESS,
-                    "description": f"Insurance premium (1% of coverage, max {ext.MAX_COVERAGE * ext.PREMIUM_PERCENTAGE} USDC for max coverage)",
+                    "maxAmountRequired": str(int(current_app.config["MAX_COVERAGE_USDC"] * current_app.config["PREMIUM_PERCENTAGE"] * 1_000_000)),
+                    "asset": current_app.config["USDC_CONTRACT_ADDRESS"], "payTo": ext.BACKEND_ADDRESS,
+                    "description": f"Insurance premium (1% of coverage, max {current_app.config["MAX_COVERAGE_USDC"] * current_app.config["PREMIUM_PERCENTAGE"]} USDC for max coverage)",
                     "maxTimeoutSeconds": 60, "extra": {},
                     "note": "Actual amount varies based on requested coverage_amount (premium = coverage × 1%)"
                 }],
@@ -214,7 +214,7 @@ def agent_card():
                     "type": "object", "required": ["merchant_url", "coverage_amount"],
                     "properties": {
                         "merchant_url": {"type": "string", "format": "uri", "description": "Merchant API endpoint to protect"},
-                        "coverage_amount": {"type": "number", "minimum": 0.001, "maximum": ext.MAX_COVERAGE, "description": f"Coverage amount in USDC (max {ext.MAX_COVERAGE}). Premium will be calculated as 1% of this amount."}
+                        "coverage_amount": {"type": "number", "minimum": 0.001, "maximum": current_app.config["MAX_COVERAGE_USDC"], "description": f"Coverage amount in USDC (max {current_app.config["MAX_COVERAGE_USDC"]}). Premium will be calculated as 1% of this amount."}
                     }
                 },
                 "outputSchema": {
@@ -226,13 +226,13 @@ def agent_card():
                     }
                 },
                 "pricing": {
-                    "model": "percentage-based", "percentage": ext.PREMIUM_PERCENTAGE,
-                    "percentage_display": f"{ext.PREMIUM_PERCENTAGE * 100}%",
+                    "model": "percentage-based", "percentage": current_app.config["PREMIUM_PERCENTAGE"],
+                    "percentage_display": f"{current_app.config["PREMIUM_PERCENTAGE"] * 100}%",
                     "calculation": "Premium = Coverage Amount × 1%", "currency": "USDC",
                     "examples": {
                         "min": {"coverage": 0.001, "premium": 0.00001},
                         "typical": {"coverage": 0.01, "premium": 0.0001},
-                        "max": {"coverage": ext.MAX_COVERAGE, "premium": ext.MAX_COVERAGE * ext.PREMIUM_PERCENTAGE}
+                        "max": {"coverage": current_app.config["MAX_COVERAGE_USDC"], "premium": current_app.config["MAX_COVERAGE_USDC"] * current_app.config["PREMIUM_PERCENTAGE"]}
                     }
                 }
             },
@@ -284,7 +284,7 @@ def agent_card():
         "metadata": {
             "category": "insurance",
             "tags": ["insurance", "x402", "zkp", "micropayments", "failure-protection"],
-            "pricing": {"model": "percentage-based", "percentage": ext.PREMIUM_PERCENTAGE, "currency": "USDC"},
+            "pricing": {"model": "percentage-based", "percentage": current_app.config["PREMIUM_PERCENTAGE"], "currency": "USDC"},
             "performance": {"zkp_generation_time_ms": "10000-20000", "refund_time_ms": "2000-5000", "total_claim_time_ms": "15000-30000"},
             "rate_limits": {
                 "/insure": {"limit": "10 per hour", "limit_per_minute": None, "recommendation": "Implement exponential backoff if you receive 429 responses"},
