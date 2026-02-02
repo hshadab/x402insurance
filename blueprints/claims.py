@@ -235,7 +235,6 @@ def claim() -> tuple[Response, int]:
             process_claim_task(claim_id)
         except ImportError:
             import threading
-            from flask import current_app
             app = current_app._get_current_object()
             def _run(app_ref, cid):
                 with app_ref.app_context():

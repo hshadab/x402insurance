@@ -67,7 +67,7 @@ class Config:
 
     # Security
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")  # Comma-separated
-    REQUIRE_CLAIM_AUTHENTICATION = True
+    REQUIRE_CLAIM_AUTHENTICATION = os.getenv("REQUIRE_CLAIM_AUTHENTICATION", "true").lower() in ("true", "1", "yes")
 
     # Timeouts (in seconds)
     JOLT_TIMEOUT = int(os.getenv("JOLT_TIMEOUT", 60))

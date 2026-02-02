@@ -228,6 +228,10 @@ CHAIN_ID=84532
 
 ## Changelog
 
+**2026-02-02 (v2.5.2)**:
+- **Fix: `current_app` UnboundLocalError in claims.py**: Removed redundant `from flask import current_app` inside `claim()` function that shadowed the module-level import on Python 3.14
+- **Fix: `REQUIRE_CLAIM_AUTHENTICATION` ignored .env**: Config was hardcoded to `True`; now reads from `os.getenv()` so `.env` setting is respected
+
 **2026-02-02 (v2.5.1)**:
 - **Dashboard blockchain data**: Dashboard-only mode now connects to Base Mainnet RPC to display live block height, gas price, wallet balances, and reserve ratio
 - **Dashboard database init**: Database is now initialized in dashboard-only mode so health check reports operational
