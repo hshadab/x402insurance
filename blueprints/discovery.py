@@ -138,7 +138,7 @@ def pricing_info():
         "premium": {
             "model": "percentage-based",
             "percentage": current_app.config["PREMIUM_PERCENTAGE"],
-            "percentage_display": f"{current_app.config["PREMIUM_PERCENTAGE"] * 100}%",
+            "percentage_display": f"{current_app.config['PREMIUM_PERCENTAGE'] * 100}%",
             "calculation": "premium = coverage × percentage",
             "currency": "USDC",
             "network": cfg.CAIP2_NETWORK,
@@ -151,13 +151,13 @@ def pricing_info():
         "coverage": {
             "min": 0.001, "max": current_app.config["MAX_COVERAGE_USDC"], "currency": "USDC",
             "recommended": 0.01,
-            "display": f"$0.001 - ${current_app.config["MAX_COVERAGE_USDC"]}",
+            "display": f"$0.001 - ${current_app.config['MAX_COVERAGE_USDC']}",
             "note": "Maximum coverage per claim is 0.1 USDC for micropayment protection"
         },
         "policy_duration": {
             "hours": current_app.config["POLICY_DURATION_HOURS"],
             "seconds": current_app.config["POLICY_DURATION_HOURS"] * 3600,
-            "display": f"{current_app.config["POLICY_DURATION_HOURS"]} hours"
+            "display": f"{current_app.config['POLICY_DURATION_HOURS']} hours"
         },
         "payment": {
             "protocol": "x402",
@@ -206,7 +206,7 @@ def agent_card():
                     "scheme": "exact", "network": cfg.CAIP2_NETWORK,
                     "maxAmountRequired": str(int(current_app.config["MAX_COVERAGE_USDC"] * current_app.config["PREMIUM_PERCENTAGE"] * 1_000_000)),
                     "asset": current_app.config["USDC_CONTRACT_ADDRESS"], "payTo": ext.BACKEND_ADDRESS,
-                    "description": f"Insurance premium (1% of coverage, max {current_app.config["MAX_COVERAGE_USDC"] * current_app.config["PREMIUM_PERCENTAGE"]} USDC for max coverage)",
+                    "description": f"Insurance premium (1% of coverage, max {current_app.config['MAX_COVERAGE_USDC'] * current_app.config['PREMIUM_PERCENTAGE']} USDC for max coverage)",
                     "maxTimeoutSeconds": 60, "extra": {},
                     "note": "Actual amount varies based on requested coverage_amount (premium = coverage × 1%)"
                 }],
@@ -214,7 +214,7 @@ def agent_card():
                     "type": "object", "required": ["merchant_url", "coverage_amount"],
                     "properties": {
                         "merchant_url": {"type": "string", "format": "uri", "description": "Merchant API endpoint to protect"},
-                        "coverage_amount": {"type": "number", "minimum": 0.001, "maximum": current_app.config["MAX_COVERAGE_USDC"], "description": f"Coverage amount in USDC (max {current_app.config["MAX_COVERAGE_USDC"]}). Premium will be calculated as 1% of this amount."}
+                        "coverage_amount": {"type": "number", "minimum": 0.001, "maximum": current_app.config["MAX_COVERAGE_USDC"], "description": f"Coverage amount in USDC (max {current_app.config['MAX_COVERAGE_USDC']}). Premium will be calculated as 1% of this amount."}
                     }
                 },
                 "outputSchema": {
@@ -227,7 +227,7 @@ def agent_card():
                 },
                 "pricing": {
                     "model": "percentage-based", "percentage": current_app.config["PREMIUM_PERCENTAGE"],
-                    "percentage_display": f"{current_app.config["PREMIUM_PERCENTAGE"] * 100}%",
+                    "percentage_display": f"{current_app.config['PREMIUM_PERCENTAGE'] * 100}%",
                     "calculation": "Premium = Coverage Amount × 1%", "currency": "USDC",
                     "examples": {
                         "min": {"coverage": 0.001, "premium": 0.00001},
