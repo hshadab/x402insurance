@@ -123,8 +123,14 @@ def create_app(env=None, dashboard_only=None):
 
     # ── Dashboard-only mode: lightweight, no blockchain deps ──
     if dashboard_only:
+        from core.database import DatabaseClient
         from blueprints.discovery import discovery_bp
         from blueprints.health import health_bp
+
+        ext.database = DatabaseClient(
+            database_url=cfg.DATABASE_URL,
+            data_dir=cfg.DATA_DIR
+        )
 
         app.register_blueprint(discovery_bp)
         app.register_blueprint(health_bp)

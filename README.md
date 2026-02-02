@@ -1,6 +1,6 @@
 # x402 Insurance
 
-Insurance for AI agents that pay for APIs using the [x402 protocol](https://github.com/coinbase/x402). When a paid API fails, the agent gets a refund.
+Insurance for AI agents that pay for APIs using the [x402 protocol](https://github.com/coinbase/x402) -- powered by [Jolt Atlas](https://github.com/ICME-Lab/jolt-atlas) zero knowledge machine learning and running on AWS Agentcore.
 
 ## What this does
 
@@ -79,6 +79,15 @@ claim = agent_submit_claim(
 | `/.well-known/agent-card.json` | GET | Public | Agent discovery card (A2A compatible) |
 | `/api/pricing` | GET | Public | Pricing and coverage details |
 | `/health` | GET | Public | Service health check |
+
+## Demo wallets (Base Mainnet)
+
+| Role | Address | Funded |
+|------|---------|--------|
+| Backend (premium collection + refunds) | `0x0e9AFe2499211c3E35e570968d1047Fcf7488c60` | 0.002 ETH, 2.0 USDC |
+| Agent (purchaser) | `0x6e89070b430b6a6d5ca4b815dcfd2e367e14eff5` | 0.005 ETH, 1.0 USDC |
+
+Both wallets are on Base Mainnet with real USDC. The backend wallet issues refunds; the agent wallet purchases policies and submits claims.
 
 ## Running locally
 
