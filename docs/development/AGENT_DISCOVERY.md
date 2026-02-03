@@ -10,7 +10,7 @@ This document describes how autonomous agents can discover and interact with the
 3. **Claim Status**: Poll `GET /claims/{claim_id}` to check claim progress
 4. **Async Proof Generation**: Use `/claim?async=true` to avoid 15-30s blocking wait (NEW!)
 5. **Policy Renewal**: Extend policies before 24h expiration with `/renew` endpoint (NEW!)
-6. **Rate Limits**: See agent card metadata for limits (10/hour for /insure, 5/hour for /claim, 20/hour for /renew)
+6. **Rate Limits**: See agent card metadata for limits (50/hour for /insure, 10/hour for /claim, 5/hour for /renew)
 7. **Timeout Guidance**: Use 30-45s timeout for `/claim` in sync mode, or use async mode to avoid timeouts
 
 **Critical Endpoints:**
@@ -309,7 +309,7 @@ const response = await fetch('https://your-domain.com/insure', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'X-Payment': '...'  // x402 payment proof
+    'PAYMENT-SIGNATURE': '...'  // x402 V2 payment proof
   },
   body: JSON.stringify({
     merchant_url: 'https://api.example.com/data',
@@ -327,7 +327,7 @@ if (response.status === 402) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Payment': signedPayment
+      'PAYMENT-SIGNATURE': signedPayment
     },
     body: JSON.stringify({
       merchant_url: 'https://api.example.com/data',
@@ -471,7 +471,7 @@ async function buyInsurance(merchantUrl: string, coverage: number) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Payment': await signX402Payment(service.accepts[0])
+      'PAYMENT-SIGNATURE': await signX402Payment(service.accepts[0])
     },
     body: JSON.stringify({
       merchant_url: merchantUrl,
@@ -598,8 +598,8 @@ def call_with_backoff(func, max_retries=5):
 ```
 
 **Rate Limits:**
-- `/insure`: 10 per hour
-- `/claim`: 5 per hour
+- `/insure`: 50 per hour
+- `/claim`: 10 per hour
 - General: 200 per day, 50 per hour
 
 **Best Practice:** Cache discovery endpoints (agent-card, pricing, schema) to conserve requests.
@@ -635,7 +635,7 @@ payment_header = sign_payment(
 
 # Retry with payment header
 response = httpx.post('/insure',
-    headers={'X-Payment': payment_header, 'X-Payer': agent_wallet.address},
+    headers={'PAYMENT-SIGNATURE': payment_header, 'X-Payer': agent_wallet.address},
     json=data
 )
 # Response: 201 Created (policy created!)
@@ -937,7 +937,7 @@ All responses include an `X-Request-ID` header. Include your own `X-Request-ID` 
 | Status Code | Error | Meaning | Recovery Strategy |
 |-------------|-------|---------|-------------------|
 | 400 | Bad Request | Invalid input data | Check inputSchema, validate request |
-| 402 | Payment Required | x402 payment needed | Sign payment and retry with X-Payment header |
+| 402 | Payment Required | x402 payment needed | Sign payment and retry with PAYMENT-SIGNATURE header |
 | 404 | Not Found | Policy/claim doesn't exist | Use /policies to find correct policy_id |
 | 429 | Rate Limit | Too many requests | Exponential backoff (1s, 2s, 4s, 8s...) |
 | 500 | Server Error | Internal service error | Retry with backoff, check /health endpoint |

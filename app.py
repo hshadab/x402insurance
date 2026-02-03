@@ -246,8 +246,8 @@ def create_app(env=None, dashboard_only=None):
                 ext.policies_created_total.inc()
             if request.endpoint == 'claims.claim' and resp.status_code == 201:
                 ext.claims_paid_total.labels(status="paid").inc()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Prometheus metrics update failed: %s", e)
         return resp
 
     # Error handlers

@@ -152,6 +152,11 @@ docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboar
 | `WEBHOOK_ENABLED` | Enable webhook delivery for async claims (default: true) | No |
 | `WEBHOOK_TIMEOUT` | Timeout for webhook POST in seconds (default: 10) | No |
 | `LOG_FORMAT` | `plain` or `json` for structured logging (default: plain) | No |
+| `RATE_LIMIT_INSURE` | Rate limit for /insure endpoint (default: 50 per hour) | No |
+| `RATE_LIMIT_CLAIM` | Rate limit for /claim endpoint (default: 10 per hour) | No |
+| `RATE_LIMIT_RENEW` | Rate limit for /renew endpoint (default: 5 per hour) | No |
+| `CORS_ORIGINS` | Allowed CORS origins, comma-separated (default: * in dev) | No |
+| `REQUIRE_CLAIM_AUTHENTICATION` | Require x402 payment for claims (default: true) | No |
 
 ## Project structure
 
@@ -214,3 +219,9 @@ pytest tests/unit/ -v
 - Webhook URLs validated against SSRF before delivery
 - Stuck async claims auto-recover after configurable timeout
 - No mock modes — real blockchain transactions and real SNARK proofs only
+
+## Changelog
+
+See [docs/SECURITY_IMPROVEMENTS.md](docs/SECURITY_IMPROVEMENTS.md#changelog) for detailed version history.
+
+**Current version: v2.5.2** (2026-02-02)

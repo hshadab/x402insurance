@@ -85,6 +85,23 @@ Minimum balances:
 
 Reserve ratio recommendation: maintain 2x USDC relative to active coverage.
 
+## Step 4: Deploy Dashboard (Optional)
+
+Deploy the read-only public dashboard to AWS App Runner:
+
+```bash
+# Build dashboard image
+docker build -f Dockerfile.dashboard -t x402-dashboard .
+
+# Push to ECR
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
+docker tag x402-dashboard YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboard:latest
+```
+
+The dashboard runs with `DASHBOARD_ONLY=true` and requires no wallet private keys.
+
 ## Step 5: Verify
 
 ```bash

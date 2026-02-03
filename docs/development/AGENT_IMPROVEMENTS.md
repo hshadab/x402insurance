@@ -1,8 +1,8 @@
 # Agent Discovery & Usability Improvements
 
-**Date:** 2025-11-08
-**Version:** v2.1.0 - Agent-Friendly Enhancements
-**Status:** IMPLEMENTED — All improvements below are live in v2.3.0.
+**Date:** 2026-02-02
+**Version:** v2.5.2 - Agent-Friendly Enhancements
+**Status:** IMPLEMENTED — All improvements below are live in v2.5.2.
 
 ---
 
@@ -27,11 +27,11 @@ Based on comprehensive investigation of agent discovery and usability, we've imp
   "metadata": {
     "rate_limits": {
       "/insure": {
-        "limit": "10 per hour",
+        "limit": "50 per hour",
         "recommendation": "Implement exponential backoff if you receive 429 responses"
       },
       "/claim": {
-        "limit": "5 per hour",
+        "limit": "10 per hour",
         "recommendation": "Implement exponential backoff if you receive 429 responses"
       },
       "general": {
@@ -149,8 +149,8 @@ status = httpx.get(f'/claims/{claim_id}').json()
     "example_delays_unit": "seconds"
   },
   "rate_limits": {
-    "/insure": "10 per hour",
-    "/claim": "5 per hour",
+    "/insure": "50 per hour",
+    "/claim": "10 per hour",
     "general": "200 per day, 50 per hour"
   },
   "documentation": "See /.well-known/agent-card.json for complete rate limit information"
@@ -351,6 +351,6 @@ For questions or issues with agent integration:
 
 ---
 
-**Version:** 2.1.0
-**Date:** 2025-11-08
+**Version:** 2.5.2
+**Date:** 2026-02-02
 **Status:** Production-Ready for Agent Adoption ✅

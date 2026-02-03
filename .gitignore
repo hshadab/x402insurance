@@ -68,6 +68,8 @@ data/
 jolt-atlas/jolt_claims_prover
 jolt-prover/target/
 models/claim_classifier.onnx
+*.srs
+dory_srs_*.srs
 
 # AWS
 .bedrock_agentcore/

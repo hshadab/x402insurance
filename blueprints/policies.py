@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify, g, current_app, Response
 from core.utils import to_micro, iso_utc_now, parse_utc
 import extensions as ext
-from functools import wraps
 
 policies_bp = Blueprint('policies', __name__)
 logger = logging.getLogger("x402insurance")
@@ -30,7 +29,7 @@ def insure() -> tuple[Response, int]:
     if coverage_amount <= 0:
         return jsonify({"error": "Coverage amount must be positive"}), 400
     if coverage_amount > current_app.config["MAX_COVERAGE_USDC"]:
-        return jsonify({"error": f"Coverage exceeds maximum of {current_app.config["MAX_COVERAGE_USDC"]} USDC"}), 400
+        return jsonify({"error": f"Coverage exceeds maximum of {current_app.config['MAX_COVERAGE_USDC']} USDC"}), 400
 
     premium = float(Decimal(str(coverage_amount)) * Decimal(str(current_app.config["PREMIUM_PERCENTAGE"])))
     premium_units = to_micro(premium)
@@ -240,12 +239,10 @@ def renew_policy() -> tuple[Response, int]:
     renewal_fee = policy.get('coverage_amount', 0) * current_app.config["PREMIUM_PERCENTAGE"] * days_extended
     renewal_fee_units = to_micro(renewal_fee)
 
-    payment_header = (
-        request.headers.get('PAYMENT-SIGNATURE') or request.headers.get('X-Payment')
-    )
-    payer_header = request.headers.get('X-Payer')
+    payment_header = getattr(g, 'payment_header', None)
+    payer_header = getattr(g, 'payer_header', None)
 
-    if not payment_header or not payer_header:
+    if not payment_header:
         required = {
             "x402Version": 2,
             "accepts": [{
