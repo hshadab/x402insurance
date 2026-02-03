@@ -74,6 +74,6 @@ ENV PYTHONUNBUFFERED=1 \
     ONNX_MODEL_PATH=./models/claim_classifier.onnx \
     BASE_RPC_URL=https://mainnet.base.org \
     CHAIN_ID=8453 \
-    FACILITATOR_URL=https://x402.org/facilitator
+    FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402
 
 CMD ["python", "-u", "agentcore_agent.py"]

@@ -45,7 +45,7 @@ RATE_LIMIT_ENABLED=true
 RATE_LIMIT_STORAGE_URL=redis://localhost:6379/0
 
 # Payment
-FACILITATOR_URL=https://x402.org/facilitator
+FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402
 PAYMENT_MAX_AGE_SECONDS=300
 
 # Security

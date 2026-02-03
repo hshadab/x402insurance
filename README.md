@@ -40,7 +40,7 @@ All payment-protected endpoints (`/insure`, `/claim`, `/renew`) use the x402 V2 
 2. Server responds `402 Payment Required` with the amount, asset (USDC), and recipient address
 3. Agent signs an EIP-712 typed-data payment message with its wallet key
 4. Agent retries the request with a `PAYMENT-SIGNATURE` header containing the signed payment
-5. Server verifies the payment via the [x402.org facilitator](https://x402.org/facilitator) and settles it on-chain
+5. Server verifies the payment via the [Coinbase CDP facilitator](https://api.cdp.coinbase.com/platform/v2/x402) and settles it on-chain
 
 Python helper functions for this flow are in `agent_helpers.py`:
 
@@ -143,7 +143,7 @@ docker push 851725214068.dkr.ecr.us-east-1.amazonaws.com/x402-insurance-dashboar
 | `BACKEND_WALLET_ADDRESS` | Corresponding wallet address | Yes |
 | `BASE_RPC_URL` | Base Mainnet RPC endpoint | Yes |
 | `JOLT_BINARY_PATH` | Path to the Jolt Atlas prover binary | Yes |
-| `FACILITATOR_URL` | x402 facilitator URL (default: `https://x402.org/facilitator`) | No |
+| `FACILITATOR_URL` | x402 facilitator URL (default: `https://api.cdp.coinbase.com/platform/v2/x402`) | No |
 | `USDC_CONTRACT_ADDRESS` | USDC contract on Base (default: mainnet USDC) | No |
 | `DATABASE_URL` | PostgreSQL connection string (omit for JSON file storage) | No |
 | `CHAIN_ID` | Blockchain chain ID (default: 8453 for Base Mainnet) | No |

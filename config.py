@@ -90,7 +90,7 @@ class Config:
         return f"eip155:{self.CHAIN_ID}"
 
     # x402 V2 Facilitator
-    FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402.org/facilitator")
+    FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://api.cdp.coinbase.com/platform/v2/x402")
 
     # Monitoring
     SENTRY_DSN = os.getenv("SENTRY_DSN")

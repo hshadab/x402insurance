@@ -24,7 +24,7 @@ os.environ["BACKEND_WALLET_PRIVATE_KEY"] = "0x" + "ab" * 32  # fake but valid fo
 os.environ["BACKEND_WALLET_ADDRESS"] = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
 os.environ["JOLT_BINARY_PATH"] = "/tmp/jolt_claims_prover"  # placeholder, patched in fixture
 os.environ["ONNX_MODEL_PATH"] = "./models/claim_classifier.onnx"
-os.environ["FACILITATOR_URL"] = "https://x402.org/facilitator"
+os.environ["FACILITATOR_URL"] = "https://api.cdp.coinbase.com/platform/v2/x402"
 os.environ["HUEY_IMMEDIATE"] = "true"
 
 

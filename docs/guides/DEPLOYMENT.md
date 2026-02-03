@@ -26,7 +26,7 @@ agentcore deploy
 - `BACKEND_WALLET_ADDRESS` — corresponding address
 - `BASE_RPC_URL` — Base Mainnet RPC (Alchemy recommended)
 - `JOLT_BINARY_PATH` — path to Jolt Atlas prover binary
-- `FACILITATOR_URL` — default: `https://x402.org/facilitator`
+- `FACILITATOR_URL` — default: `https://api.cdp.coinbase.com/platform/v2/x402`
 
 The Docker image (`Dockerfile`) includes:
 - Jolt Atlas binary with QEMU x86_64 emulation (for ARM64 AgentCore runtime)

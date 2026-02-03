@@ -45,14 +45,14 @@ class FacilitatorPaymentVerifier:
     x402 V2 Payment Verifier using facilitator API.
 
     Delegates verification and settlement to a facilitator endpoint
-    (e.g. https://x402.org/facilitator).
+    (e.g. https://api.cdp.coinbase.com/platform/v2/x402).
     """
 
     def __init__(
         self,
         backend_address: str,
         usdc_address: str,
-        facilitator_url: str = "https://x402.org/facilitator",
+        facilitator_url: str = "https://api.cdp.coinbase.com/platform/v2/x402",
         chain_id: int = 8453,
         database=None,
     ):

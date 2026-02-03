@@ -72,7 +72,7 @@ class TestFacilitatorPaymentVerifierParsing:
         self.verifier = FacilitatorPaymentVerifier(
             backend_address="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
             usdc_address="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-            facilitator_url="https://x402.org/facilitator",
+            facilitator_url="https://api.cdp.coinbase.com/platform/v2/x402",
             chain_id=84532,
         )
 
